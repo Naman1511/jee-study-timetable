@@ -62,6 +62,18 @@
             User ID: Loading...
         </p>
 
+        <!-- Instructions Section -->
+        <div class="bg-indigo-50 p-4 rounded-lg mb-6 shadow-sm">
+            <h2 class="text-lg font-semibold text-indigo-800 mb-2">How to Use Your Timetable:</h2>
+            <ul class="list-disc list-inside text-gray-700 space-y-1">
+                <li>**Edit Any Cell:** Click directly on the "Time Slot", "Subject", or "Topic & Action" cells to edit their content.</li>
+                <li>**Save Your Changes:** After making edits, click the "<span class="font-bold text-green-700">Save Edits</span>" button. Your changes will be saved to the cloud and will be available on any device you use to access this timetable.</li>
+                <li>**Generate Next Week:** Click the "<span class="font-bold text-blue-700">Generate Next Week's Timetable</span>" button when you are ready for a new plan. This will prompt you to ask me (your AI mentor) in the chat to provide the updated schedule.</li>
+                <li>**User ID:** Your unique User ID is displayed below the title. This ID links your timetable to your cloud storage.</li>
+            </ul>
+        </div>
+        <!-- End Instructions Section -->
+
 
         <div class="overflow-x-auto rounded-lg shadow-md">
             <table class="w-full text-left table-auto border-collapse">
@@ -95,13 +107,27 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase variables - MANDATORY to use __app_id, __firebase_config, __initial_auth_token
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // Firebase variables for GitHub Pages deployment
+        // IMPORTANT: This 'appId' is a unique string you choose for your application's data structure in Firestore.
+        // It's part of the Firestore path: /artifacts/{appId}/users/{userId}/timetables
+        const appId = 'naman-jee-timetable-v1'; // You can change this to any unique string you prefer
+
+        // IMPORTANT: Paste YOUR Firebase project's configuration object here.
+        // This comes directly from your Firebase Console > Project settings > Your apps > Web app.
+        const firebaseConfig = {
+          apiKey: "AIzaSyAtEkwhZaj3S9v65AHF8RueNqvC1Q4e5Q",
+          authDomain: "naman-4512.firebaseapp.com",
+          projectId: "naman-4512",
+          storageBucket: "naman-4512.firebasestorage.app",
+          messagingSenderId: "743969813458",
+          appId: "1:743969813458:web:e7a0ac39853e93ba2f8e0b" // This is the Firebase-provided App ID for your web app
+        };
+
+        // For GitHub Pages, we'll use anonymous sign-in directly.
+        const initialAuthToken = null; // No custom token for external hosting
 
         let app, db, auth, userId;
         let isAuthReady = false; // Flag to ensure Firestore operations happen after auth
@@ -299,29 +325,23 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Authenticate user
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
-                        isAuthReady = true;
-                        await loadTimetable(); // Load data once authenticated
-                    } else {
-                        try {
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                await signInAnonymously(auth);
-                            }
-                        } catch (error) {
-                            console.error("Error during authentication:", error);
-                            showMessage(`Authentication failed: ${error.message}. Timetable might not save.`, 'error');
-                            // If auth fails, still load default but inform user
-                            renderTimetable(defaultTimetableData);
-                            hideLoading();
-                        }
-                    }
-                });
+                // Add this line for debugging: Log the loaded Firebase config
+                console.log("Firebase Config Loaded:", firebaseConfig);
+
+                // Authenticate user directly with anonymous sign-in for external hosting
+                try {
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                    document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                    isAuthReady = true;
+                    await loadTimetable(); // Load data once authenticated
+                } catch (error) {
+                    console.error("Error during authentication:", error);
+                    // Updated message to be more specific for authentication errors
+                    showMessage(`Authentication failed: ${error.message}. Please ensure Anonymous Sign-in is enabled in your Firebase Project's Authentication settings. Timetable might not save.`, 'error');
+                    renderTimetable(defaultTimetableData); // Fallback to default on error
+                    hideLoading();
+                }
             } else {
                 showMessage("Firebase config not found. Data will not be saved. Please provide firebaseConfig.", "error");
                 renderTimetable(defaultTimetableData);
