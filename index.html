@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE Study Timetable</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a clean look */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        /* Style for editable cells */
+        [contenteditable]:focus {
+            outline: 2px solid #6366f1; /* Indigo-500 for focus */
+            background-color: #e0e7ff; /* Light indigo background when editing */
+            border-radius: 0.375rem; /* rounded-md */
+        }
+        table td, table th {
+            border: 1px solid #cbd5e1; /* border-slate-300 */
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #6366f1;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8 md:p-12 text-gray-800">
+
+    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 lg:p-10 mb-8 relative">
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+        </div>
+
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-700 mb-6">Your Weekly JEE Study Timetable</h1>
+        <p class="text-center text-gray-600 mb-4">
+            Manage your study schedule efficiently. You can edit any cell directly by clicking on it.
+        </p>
+        <p id="user-id-display" class="text-center text-sm text-gray-500 mb-6">
+            User ID: Loading...
+        </p>
+
+
+        <div class="overflow-x-auto rounded-lg shadow-md">
+            <table class="w-full text-left table-auto border-collapse">
+                <thead class="bg-indigo-600 text-white rounded-t-lg">
+                    <tr>
+                        <th class="p-4 rounded-tl-lg">Day</th>
+                        <th class="p-4">Time Slot</th>
+                        <th class="p-4">Subject</th>
+                        <th class="p-4 rounded-tr-lg">Topic & Action</th>
+                    </tr>
+                </thead>
+                <tbody id="timetable-body" class="bg-white divide-y divide-gray-200">
+                    <!-- Timetable rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="flex justify-center mt-8 space-x-4">
+            <button id="next-week-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+                Generate Next Week's Timetable
+            </button>
+            <button id="save-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+                Save Edits
+            </button>
+        </div>
+
+        <p id="message-box" class="text-center text-sm mt-6 hidden rounded-md p-3">
+            <!-- Messages like "Saving...", "Saved!", "Error..." will appear here -->
+        </p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase variables - MANDATORY to use __app_id, __firebase_config, __initial_auth_token
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, userId;
+        let isAuthReady = false; // Flag to ensure Firestore operations happen after auth
+
+        // Default timetable data for the current week (June 17 - June 22)
+        // This will be loaded if no data exists in Firestore for the current week
+        const defaultTimetableData = [
+            // Tuesday, June 17, 2025
+            { day: 'Tuesday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Tuesday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Tuesday', time: '5:15 PM - 6:15 PM', subject: 'Chemistry', topic: 'Basic Concepts of Chemistry (Mole Concept - Intro, Atomic/Molecular Mass, Moles from Mass/Volume). Review BASE notes, NCERT Class 11 Ch 1. Solve NCERT in-text/initial end-of-chapter problems.' },
+            { day: 'Tuesday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Tuesday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Trigonometry - High Priority)', topic: 'Basic Trigo Ratios, Identities, Standard Angles (NCERT Class 10 Ch 8 & 9, S.L. Loney Ch 1 & 2). Solve ALL examples/exercises. Start Mistake Notebook.' },
+            { day: 'Tuesday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Tuesday', time: '8:45 PM - 9:30 PM', subject: 'Physics', topic: 'Kinematics (Intro, Distance, Displacement, Speed, Velocity, Acceleration, Equations of Motion). Review BASE notes, NCERT Class 11 Ch 3. Solve NCERT examples, start H.C. Verma Vol I Ch 3 theory/first solved examples.' },
+
+            // Wednesday, June 18, 2025
+            { day: 'Wednesday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Wednesday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Wednesday', time: '5:15 PM - 6:15 PM', subject: 'Mathematics (Mod Equations - Introduction)', topic: 'Modulus Equations - Basics (Definition, Properties, Simple Equations). Review BASE notes, work through solved examples from coaching module.' },
+            { day: 'Wednesday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Wednesday', time: '6:45 PM - 8:15 PM', subject: 'Physics (Kinematics - Problem Solving)', topic: 'Kinematics (Mixed Problem Solving with basic concepts). Solve H.C. Verma Vol I Ch 3 (Objective I & II, 10-15 problems). Add tricky problems to Mistake Notebook.' },
+            { day: 'Wednesday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Wednesday', time: '8:45 PM - 9:30 PM', subject: 'Chemistry', topic: 'Stoichiometry (Introduction, Limiting Reagent - Theory). Review BASE notes, NCERT Class 11 Ch 1. Focus on understanding concepts.' },
+
+            // Thursday, June 19, 2025
+            { day: 'Thursday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Thursday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Thursday', time: '5:15 PM - 6:15 PM', subject: 'Chemistry', topic: 'Stoichiometry (Numerical Problems). Solve numericals from BASE module. Refer to solved examples in NCERT/module.' },
+            { day: 'Thursday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Thursday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Mod Equations & Trigo Review)', topic: 'Mod Equations (Problem Solving - 15-20 problems from BASE module). Trigo Review (30 min - Compound, Multiple, Submultiple Angles from S.L. Loney/module, 5-7 mixed problems). Update Mistake Notebook.' },
+            { day: 'Thursday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Thursday', time: '8:45 PM - 9:30 PM', subject: 'Physics', topic: 'Kinematics - Motion under Gravity. Review BASE notes, NCERT Class 11 Ch 3. Solve a few short answer/conceptual questions from H.C. Verma.' },
+
+            // Friday, June 20, 2025
+            { day: 'Friday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Friday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Friday', time: '5:15 PM - 6:15 PM', subject: 'Physics', topic: 'Kinematics - 2D Motion (Vectors Intro, Projectile Motion - Theory). Review BASE notes, NCERT Class 11 Ch 4. Focus on vector addition/subtraction and basic projectile motion.' },
+            { day: 'Friday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Friday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Advanced Trigo / Sets & Relations Review)', topic: 'Trigonometric Equations / Inverse Trigo Functions (S.L. Loney/BASE module). OR: Quick review of Sets & Relations (30-45 min from NCERT/coaching notes).' },
+            { day: 'Friday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Friday', time: '8:45 PM - 9:30 PM', subject: 'Chemistry (Revision & Problem Solving)', topic: 'Mole Concept & Stoichiometry (Mixed Problems). Solve 10-15 mixed problems from BASE module. Review Mistake Notebook.' },
+
+            // Saturday, June 21, 2025
+            { day: 'Saturday', time: '9:00 AM - 10:30 AM', subject: 'Mathematics (Trigonometry Deep Dive & Problem Solving)', topic: 'Comprehensive problem solving (20-25 problems) from S.L. Loney/BASE module on all Trigo topics covered. Update Mistake Notebook rigorously.' },
+            { day: 'Saturday', time: '10:30 AM - 11:00 AM', subject: 'Short Break', topic: '' },
+            { day: 'Saturday', time: '11:00 AM - 1:00 PM', subject: 'Physics (Kinematics Comprehensive Problem Solving)', topic: 'Solve more problems from H.C. Verma Vol I Ch 3 (objective, subjective, BASE examples). Focus on motion under gravity and initial 2D kinematics. Analyze solutions.' },
+            { day: 'Saturday', time: '1:00 PM - 2:30 PM', subject: 'Lunch Break', topic: '' },
+            { day: 'Saturday', time: '2:30 PM - 4:00 PM', subject: 'Chemistry (Concept Consolidation)', topic: 'Reread NCERT Ch 1. Solve ALL remaining NCERT end-of-chapter problems. Solve 15-20 problems from BASE module (all aspects of Ch 1).' },
+            { day: 'Saturday', time: '4:00 PM - 4:30 PM', subject: 'Short Break', topic: '' },
+            { day: 'Saturday', time: '4:30 PM - 6:30 PM', subject: 'Mathematics (Mod Equations - Comprehensive Problem Solving)', topic: 'Solve tougher problems from coaching module on Modulus Equations (inequalities, graphs, different cases). Add to Mistake Notebook.' },
+
+            // Sunday, June 22, 2025
+            { day: 'Sunday', time: '9:00 AM - 10:30 AM', subject: 'Weekly Revision - All Subjects', topic: 'Quickly review all coaching notes, self-study notes/highlights. Focus on difficult/important concepts.' },
+            { day: 'Sunday', time: '10:30 AM - 11:00 AM', subject: 'Short Break', topic: '' },
+            { day: 'Sunday', time: '11:00 AM - 12:00 PM', subject: 'Error Analysis & Planning', topic: 'Go through Mistake Notebook. Re-attempt problems. Identify weak concepts. Plan next week\'s study approach.' },
+            { day: 'Sunday', time: 'Post 12:00 PM', subject: 'Rest and Recharge', topic: 'Absolutely no academic study. Engage in hobbies, spend time with family.' },
+        ];
+
+        // Utility function for showing messages
+        const messageBox = document.getElementById('message-box');
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        function showMessage(msg, type = 'info') {
+            messageBox.textContent = msg;
+            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+            if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                messageBox.classList.add('bg-blue-100', 'text-blue-700');
+            }
+            messageBox.style.display = 'block'; // Ensure it's visible
+            setTimeout(() => {
+                messageBox.style.display = 'none'; // Hide after some time
+            }, 5000);
+        }
+
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        // Function to get the current week's document ID
+        function getCurrentWeekDocId() {
+            const today = new Date();
+            // Start of the week (Tuesday for your plan)
+            const firstDayOfWeek = new Date(today);
+            const currentDay = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+            const diff = currentDay >= 2 ? currentDay - 2 : currentDay + 5; // Calculate days to Tuesday
+            firstDayOfWeek.setDate(today.getDate() - diff);
+            firstDayOfWeek.setHours(0, 0, 0, 0); // Reset time to start of day
+
+            // End of the week (Sunday)
+            const lastDayOfWeek = new Date(firstDayOfWeek);
+            lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6); // Tuesday + 6 days = Monday next week
+            lastDayOfWeek.setHours(23, 59, 59, 999);
+
+            const startYYYYMMDD = `${firstDayOfWeek.getFullYear()}-${(firstDayOfWeek.getMonth() + 1).toString().padStart(2, '0')}-${firstDayOfWeek.getDate().toString().padStart(2, '0')}`;
+            const endYYYYMMDD = `${lastDayOfWeek.getFullYear()}-${(lastDayOfWeek.getMonth() + 1).toString().padStart(2, '0')}-${lastDayOfWeek.getDate().toString().padStart(2, '0')}`;
+            return `week_${startYYYYMMDD}_to_${endYYYYMMDD}`;
+        }
+
+        // Function to render the timetable from data
+        function renderTimetable(data) {
+            const timetableBody = document.getElementById('timetable-body');
+            timetableBody.innerHTML = ''; // Clear existing rows
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50'; // Tailwind class for hover effect
+
+                row.innerHTML = `
+                    <td class="p-4">${item.day}</td>
+                    <td class="p-4" contenteditable="true" data-field="time">${item.time}</td>
+                    <td class="p-4" contenteditable="true" data-field="subject">${item.subject}</td>
+                    <td class="p-4" contenteditable="true" data-field="topic">${item.topic}</td>
+                `;
+                timetableBody.appendChild(row);
+            });
+        }
+
+        // Function to load timetable data from Firestore
+        async function loadTimetable() {
+            showLoading();
+            try {
+                const docId = getCurrentWeekDocId();
+                const timetableDocRef = doc(db, `artifacts/${appId}/users/${userId}/timetables`, docId);
+                const docSnap = await getDoc(timetableDocRef);
+
+                if (docSnap.exists() && docSnap.data().data) {
+                    const loadedData = JSON.parse(docSnap.data().data);
+                    renderTimetable(loadedData);
+                    showMessage('Timetable loaded from cloud!', 'success');
+                } else {
+                    renderTimetable(defaultTimetableData);
+                    // Optionally save default data if it doesn't exist
+                    await setDoc(timetableDocRef, { data: JSON.stringify(defaultTimetableData) });
+                    showMessage('Default timetable loaded and saved to cloud. You can edit it!', 'info');
+                }
+            } catch (error) {
+                console.error("Error loading timetable: ", error);
+                showMessage(`Error loading timetable: ${error.message}. Loading default.`, 'error');
+                renderTimetable(defaultTimetableData); // Fallback to default on error
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Function to save edits to Firestore
+        async function saveEdits() {
+            showLoading();
+            showMessage('Saving edits...', 'info');
+            try {
+                // Collect current data from the table
+                const timetableData = [];
+                const rows = timetableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    timetableData.push({
+                        day: cells[0].textContent,
+                        time: cells[1].textContent,
+                        subject: cells[2].textContent,
+                        topic: cells[3].textContent,
+                    });
+                });
+
+                const docId = getCurrentWeekDocId();
+                const timetableDocRef = doc(db, `artifacts/${appId}/users/${userId}/timetables`, docId);
+                await setDoc(timetableDocRef, { data: JSON.stringify(timetableData) });
+                showMessage('Edits saved to cloud successfully!', 'success');
+            } catch (error) {
+                console.error("Error saving timetable: ", error);
+                showMessage(`Error saving timetable: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Placeholder for "Next Week" functionality - This button will trigger a request to the AI
+        function generateNextWeekTimetable() {
+            showMessage('Please ask me in the chat to generate the timetable for the next week!', 'info');
+            // When the user clicks this, they will prompt you (the AI) in the chat.
+            // You will then update the `defaultTimetableData` variable in the code with the new week's content
+            // and re-render the immersive.
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize Firebase App
+            if (Object.keys(firebaseConfig).length > 0) {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Authenticate user
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-id-display').textContent = `User ID: ${userId}`;
+                        isAuthReady = true;
+                        await loadTimetable(); // Load data once authenticated
+                    } else {
+                        try {
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        } catch (error) {
+                            console.error("Error during authentication:", error);
+                            showMessage(`Authentication failed: ${error.message}. Timetable might not save.`, 'error');
+                            // If auth fails, still load default but inform user
+                            renderTimetable(defaultTimetableData);
+                            hideLoading();
+                        }
+                    }
+                });
+            } else {
+                showMessage("Firebase config not found. Data will not be saved. Please provide firebaseConfig.", "error");
+                renderTimetable(defaultTimetableData);
+                hideLoading();
+            }
+
+            // Event Listeners
+            document.getElementById('next-week-btn').addEventListener('click', generateNextWeekTimetable);
+            document.getElementById('save-btn').addEventListener('click', saveEdits);
+        });
+    </script>
+</body>
+</html>
