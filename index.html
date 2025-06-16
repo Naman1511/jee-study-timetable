@@ -146,18 +146,24 @@
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase variables for GitHub Pages deployment
-        const appId = 'naman-jee-timetable-v1'; // This is your chosen app ID for Firestore data structure
+        // IMPORTANT: This 'appId' is a unique string you choose for your application's data structure in Firestore.
+        // It's part of the Firestore path: /artifacts/{appId}/users/{userId}/timetables
+        const appId = 'naman-jee-timetable-v1'; // You can change this to any unique string you prefer
 
         // IMPORTANT: Paste YOUR Firebase project's configuration object here.
         // This comes directly from your Firebase Console > Project settings > Your apps > Web app.
+        // Make sure it matches exactly what you get from Firebase.
         const firebaseConfig = {
-          apiKey: "AIzaSyAtEkwhZaj3S9v65sAHf8RueNqvC1Q4e5Q",
+          apiKey: "AIzaSyAtEkwhZaj3S9v65AHF8RueNqvC1Q4e5Q",
           authDomain: "naman-4512.firebaseapp.com",
           projectId: "naman-4512",
           storageBucket: "naman-4512.firebasestorage.app",
           messagingSenderId: "743969813458",
-          appId: "1:743969813458:web:e7a0ac39853e93ba2f8e0b" // Firebase-provided App ID
+          appId: "1:743969813458:web:e7a0ac39853e93ba2f8e0b" // This is the Firebase-provided App ID for your web app
         };
+
+        // For GitHub Pages, we'll use anonymous sign-in directly.
+        const initialAuthToken = null; // No custom token for external hosting
 
         let app, db, auth, userId;
         let isAuthReady = false;
@@ -225,6 +231,62 @@
             const endYYYYMMDD = `${lastDayOfWeek.getFullYear()}-${(lastDayOfWeek.getMonth() + 1).toString().padStart(2, '0')}-${lastDayOfWeek.getDate().toString().padStart(2, '0')}`;
             return `week_${startYYYYMMDD}_to_${endYYYYMMDD}`;
         }
+
+        // Default timetable data for the current week (June 17 - June 22)
+        // This will be loaded if no data exists in Firestore for the current week
+        const defaultTimetableData = [
+            // Tuesday, June 17, 2025
+            { day: 'Tuesday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Tuesday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Tuesday', time: '5:15 PM - 6:15 PM', subject: 'Chemistry', topic: 'Basic Concepts of Chemistry (Mole Concept - Intro, Atomic/Molecular Mass, Moles from Mass/Volume). Review BASE notes, NCERT Class 11 Ch 1. Solve NCERT in-text/initial end-of-chapter problems.' },
+            { day: 'Tuesday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Tuesday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Trigonometry - High Priority)', topic: 'Basic Trigo Ratios, Identities, Standard Angles (NCERT Class 10 Ch 8 & 9, S.L. Loney Ch 1 & 2). Solve ALL examples/exercises. Start Mistake Notebook.' },
+            { day: 'Tuesday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Tuesday', time: '8:45 PM - 9:30 PM', subject: 'Physics', topic: 'Kinematics (Intro, Distance, Displacement, Speed, Velocity, Acceleration, Equations of Motion). Review BASE notes, NCERT Class 11 Ch 3. Solve NCERT examples, start H.C. Verma Vol I Ch 3 theory/first solved examples.' },
+
+            // Wednesday, June 18, 2025
+            { day: 'Wednesday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Wednesday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Wednesday', time: '5:15 PM - 6:15 PM', subject: 'Mathematics (Mod Equations - Introduction)', topic: 'Modulus Equations - Basics (Definition, Properties, Simple Equations). Review BASE notes, work through solved examples from coaching module.' },
+            { day: 'Wednesday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Wednesday', time: '6:45 PM - 8:15 PM', subject: 'Physics (Kinematics - Problem Solving)', topic: 'Kinematics (Mixed Problem Solving with basic concepts). Solve H.C. Verma Vol I Ch 3 (Objective I & II, 10-15 problems). Add tricky problems to Mistake Notebook.' },
+            { day: 'Wednesday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Wednesday', time: '8:45 PM - 9:30 PM', subject: 'Chemistry', topic: 'Stoichiometry (Introduction, Limiting Reagent - Theory). Review BASE notes, NCERT Class 11 Ch 1. Focus on understanding concepts.' },
+
+            // Thursday, June 19, 2025
+            { day: 'Thursday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Thursday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Thursday', time: '5:15 PM - 6:15 PM', subject: 'Chemistry', topic: 'Stoichiometry (Numerical Problems). Solve numericals from BASE module. Refer to solved examples in NCERT/module.' },
+            { day: 'Thursday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Thursday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Mod Equations & Trigo Review)', topic: 'Mod Equations (Problem Solving - 15-20 problems from BASE module). Trigo Review (30 min - Compound, Multiple, Submultiple Angles from S.L. Loney/module, 5-7 mixed problems). Update Mistake Notebook.' },
+            { day: 'Thursday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Thursday', time: '8:45 PM - 9:30 PM', subject: 'Physics', topic: 'Kinematics - Motion under Gravity. Review BASE notes, NCERT Class 11 Ch 3. Solve a few short answer/conceptual questions from H.C. Verma.' },
+
+            // Friday, June 20, 2025
+            { day: 'Friday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
+            { day: 'Friday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
+            { day: 'Friday', time: '5:15 PM - 6:15 PM', subject: 'Physics', topic: 'Kinematics - 2D Motion (Vectors Intro, Projectile Motion - Theory). Review BASE notes, NCERT Class 11 Ch 4. Focus on vector addition/subtraction and basic projectile motion.' },
+            { day: 'Friday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
+            { day: 'Friday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Advanced Trigo / Sets & Relations Review)', topic: 'Trigonometric Equations / Inverse Trigo Functions (S.L. Loney/BASE module). OR: Quick review of Sets & Relations (30-45 min from NCERT/coaching notes).' },
+            { day: 'Friday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
+            { day: 'Friday', time: '8:45 PM - 9:30 PM', subject: 'Chemistry (Revision & Problem Solving)', topic: 'Mole Concept & Stoichiometry (Mixed Problems). Solve 10-15 mixed problems from BASE module. Review Mistake Notebook.' },
+
+            // Saturday, June 21, 2025
+            { day: 'Saturday', time: '9:00 AM - 10:30 AM', subject: 'Mathematics (Trigonometry Deep Dive & Problem Solving)', topic: 'Comprehensive problem solving (20-25 problems) from S.L. Loney/BASE module on all Trigo topics covered. Update Mistake Notebook rigorously.' },
+            { day: 'Saturday', time: '10:30 AM - 11:00 AM', subject: 'Short Break', topic: '' },
+            { day: 'Saturday', time: '11:00 AM - 1:00 PM', subject: 'Physics (Kinematics Comprehensive Problem Solving)', topic: 'Solve more problems from H.C. Verma Vol I Ch 3 (objective, subjective, BASE examples). Focus on motion under gravity and initial 2D kinematics. Analyze solutions.' },
+            { day: 'Saturday', time: '1:00 PM - 2:30 PM', subject: 'Lunch Break', topic: '' },
+            { day: 'Saturday', time: '2:30 PM - 4:00 PM', subject: 'Chemistry (Concept Consolidation)', topic: 'Reread NCERT Ch 1. Solve ALL remaining NCERT end-of-chapter problems. Solve 15-20 problems from BASE module (all aspects of Ch 1).' },
+            { day: 'Saturday', time: '4:00 PM - 4:30 PM', subject: 'Short Break', topic: '' },
+            { day: 'Saturday', time: '4:30 PM - 6:30 PM', subject: 'Mathematics (Mod Equations - Comprehensive Problem Solving)', topic: 'Solve tougher problems from coaching module on Modulus Equations (inequalities, graphs, different cases). Add to Mistake Notebook.' },
+
+            // Sunday, June 22, 2025
+            { day: 'Sunday', time: '9:00 AM - 10:30 AM', subject: 'Weekly Revision - All Subjects', topic: 'Quickly review all coaching notes, self-study notes/highlights. Focus on difficult/important concepts.' },
+            { day: 'Sunday', time: '10:30 AM - 11:00 AM', subject: 'Short Break', topic: '' },
+            { day: 'Sunday', time: '11:00 AM - 12:00 PM', subject: 'Error Analysis & Planning', topic: 'Go through Mistake Notebook. Re-attempt problems. Identify weak concepts. Plan next week\'s study approach.' },
+            { day: 'Sunday', time: 'Post 12:00 PM', subject: 'Rest and Recharge', topic: 'Absolutely no academic study. Engage in hobbies, spend time with family.' },
+        ];
+
 
         // Function to render the timetable from data
         function renderTimetable(data) {
@@ -323,7 +385,16 @@
             showAuthMessage('Signing up...', 'info');
             showLoading();
             try {
-                await createUserWithEmailAndPassword(auth, email, password);
+                const credential = await createUserWithEmailAndPassword(auth, email, password);
+                // After sign-up, link anonymous data to new user if any
+                if (auth.currentUser && auth.currentUser.isAnonymous) {
+                     // This part needs a server-side function to link anonymous data to the new user.
+                     // For a client-side only app, the anonymous data remains under the anonymous ID
+                     // and new data for the email user starts fresh or is fetched if existing.
+                     // For this simple example, we'll just sign out the anonymous user and sign in the new one.
+                     // If you had data under the anonymous ID you wanted to preserve, you'd save it
+                     // and then load it under the new email ID.
+                }
                 showAuthMessage('Sign up successful! You are now logged in.', 'success');
                 // onAuthStateChanged listener will handle loading data for the new user
             } catch (error) {
@@ -387,17 +458,18 @@
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                console.log("Firebase Config Loaded:", firebaseConfig);
+                console.log("Firebase Config Loaded:", firebaseConfig); // For debugging
 
                 // Use onAuthStateChanged to manage user state and data loading
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        userIdDisplay.textContent = `User ID: ${user.email || user.uid} (Logged In)`;
+                        // Display email if available, otherwise anonymous ID
+                        userIdDisplay.textContent = `User ID: ${user.email || 'Anonymous (' + user.uid + ')'} (Logged In)`;
                         isAuthReady = true;
                         await loadTimetable(); // Load data for the current user
                     } else {
-                        // No user signed in, attempt anonymous sign-in
+                        // No user signed in (e.g., first load or after logout), attempt anonymous sign-in
                         userIdDisplay.textContent = 'User ID: Attempting Anonymous Sign-in...';
                         try {
                             const userCredential = await signInAnonymously(auth);
@@ -409,12 +481,12 @@
                             console.error("Error during anonymous authentication:", error);
                             showMainMessage(`Critical Authentication Error: ${error.message}. Please ensure Anonymous and Email/Password sign-in methods are enabled in your Firebase Project's Authentication settings, and your API Key is valid.`, 'error');
                             renderTimetable(defaultTimetableData); // Fallback to default
-                            hideLoading(); // Hide loading if it was stuck
+                            hideLoading(); // Ensure loading spinner is hidden
                         }
                     }
                 });
             } else {
-                showMainMessage("Firebase config not found. Data will not be saved. Please provide firebaseConfig.", "error");
+                showMainMessage("Firebase config not found. Data will not be saved. Please provide firebaseConfig.", 'error');
                 renderTimetable(defaultTimetableData);
                 hideLoading();
             }
