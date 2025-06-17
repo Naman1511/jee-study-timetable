@@ -7,7 +7,7 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PWA Manifest Link -->
-    <link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <style>
         /* Custom font for a clean look */
         body {
@@ -137,7 +137,7 @@
 
     <script type="module">
         // Updated Firebase import to correctly get enablePersistence
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"; // Changed Firebase version
         import {
             getAuth,
             signInAnonymously,
@@ -145,8 +145,8 @@
             signInWithEmailAndPassword,
             signOut,
             onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, enablePersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
+        } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js"; // Changed Firebase version
+        import { getFirestore, doc, setDoc, getDoc, enablePersistence } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js"; // Changed Firebase version
 
         // Firebase variables for GitHub Pages deployment
         const appId = 'naman-jee-timetable-v1'; // This is your chosen app ID for Firestore data structure
@@ -454,7 +454,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             // Register Service Worker for PWA/Offline
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/service-worker.js')
+                // Add a cache-busting query parameter to force update
+                navigator.serviceWorker.register('/service-worker.js?v=2') // Changed version to force update
                 .then((reg) => console.log('Service Worker Registered!', reg))
                 .catch((err) => console.error('Service Worker Registration Failed:', err));
             }
