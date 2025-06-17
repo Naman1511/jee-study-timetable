@@ -145,7 +145,7 @@
             signOut,
             onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, enablePersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; // Added enablePersistence
 
         // Firebase variables for GitHub Pages deployment
         const appId = 'naman-jee-timetable-v1'; // This is your chosen app ID for Firestore data structure
@@ -462,6 +462,26 @@
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
+
+                // Enable Firestore Persistence
+                try {
+                    await enablePersistence(db);
+                    console.log("Firestore persistence enabled successfully.");
+                    showMainMessage("Offline data sync enabled!", 'info');
+                } catch (err) {
+                    if (err.code === 'failed-precondition') {
+                        // Multiple tabs open, persistence can only be enabled in one.
+                        console.warn("Firestore persistence failed: Multiple tabs open. Data will not be available offline if closed and reopened without internet.");
+                        showMainMessage("Offline persistence not fully active (multiple tabs open).", 'error');
+                    } else if (err.code === 'unimplemented') {
+                        // The browser does not support persistence.
+                        console.error("Firestore persistence failed: Browser does not support offline persistence.");
+                        showMainMessage("Your browser does not support offline data sync.", 'error');
+                    } else {
+                        console.error("Firestore persistence failed:", err);
+                        showMainMessage(`Error enabling offline data sync: ${err.message}`, 'error');
+                    }
+                }
 
                 console.log("Firebase Config Loaded:", firebaseConfig); // For debugging
 
