@@ -6,8 +6,6 @@
     <title>JEE Study Timetable</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PWA Manifest Link -->
-    <link rel="manifest" href="/manifest.json">
     <style>
         /* Custom font for a clean look */
         body {
@@ -136,8 +134,7 @@
     </div>
 
     <script type="module">
-        // Updated Firebase import to correctly get enablePersistence
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js"; // Changed Firebase version
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
         import {
             getAuth,
             signInAnonymously,
@@ -145,8 +142,9 @@
             signInWithEmailAndPassword,
             signOut,
             onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js"; // Changed Firebase version
-        import { getFirestore, doc, setDoc, getDoc, enablePersistence } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js"; // Changed Firebase version
+        } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js";
+        // Removed enablePersistence import as it's not needed without offline support
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js"; 
 
         // Firebase variables for GitHub Pages deployment
         const appId = 'naman-jee-timetable-v1'; // This is your chosen app ID for Firestore data structure
@@ -155,7 +153,7 @@
         // This comes directly from your Firebase Console > Project settings > Your apps > Web app.
         // Make sure it matches exactly what you get from Firebase.
         const firebaseConfig = {
-          apiKey: "AIzaSyAtEkwhZaj3S9v65sAHf8RueNqvC1Q4e5Q",
+          apiKey: "AIzaSyAtEkwhZaj3S9v65AHF8RueNqvC1Q4e5Q",
           authDomain: "naman-4512.firebaseapp.com",
           projectId: "naman-4512",
           storageBucket: "naman-4512.firebasestorage.app",
@@ -452,39 +450,15 @@
 
         // --- Initialize App and Listen for Auth State Changes ---
         document.addEventListener('DOMContentLoaded', async () => {
-            // Register Service Worker for PWA/Offline
-            if ('serviceWorker' in navigator) {
-                // Add a cache-busting query parameter to force update
-                navigator.serviceWorker.register('/service-worker.js?v=2') // Changed version to force update
-                .then((reg) => console.log('Service Worker Registered!', reg))
-                .catch((err) => console.error('Service Worker Registration Failed:', err));
-            }
-
+            // PWA Service Worker registration removed
+            
             if (Object.keys(firebaseConfig).length > 0) {
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Enable Firestore Persistence
-                try {
-                    await enablePersistence(db);
-                    console.log("Firestore persistence enabled successfully.");
-                    showMainMessage("Offline data sync enabled!", 'info');
-                } catch (err) {
-                    if (err.code === 'failed-precondition') {
-                        // Multiple tabs open, persistence can only be enabled in one.
-                        console.warn("Firestore persistence failed: Multiple tabs open. Data will not be available offline if closed and reopened without internet.");
-                        showMainMessage("Offline persistence not fully active (multiple tabs open).", 'error');
-                    } else if (err.code === 'unimplemented') {
-                        // The browser does not support persistence.
-                        console.error("Firestore persistence failed: Browser does not support offline persistence.");
-                        showMainMessage("Your browser does not support offline data sync.", 'error');
-                    } else {
-                        console.error("Firestore persistence failed:", err);
-                        showMainMessage(`Error enabling offline data sync: ${err.message}`, 'error');
-                    }
-                }
-
+                // Firestore Persistence (offline support) removed
+                
                 console.log("Firebase Config Loaded:", firebaseConfig); // For debugging
 
                 // Use onAuthStateChanged to manage user state and data loading
