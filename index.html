@@ -136,6 +136,7 @@
     </div>
 
     <script type="module">
+        // Updated Firebase import to correctly get enablePersistence
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import {
             getAuth,
@@ -145,7 +146,7 @@
             signOut,
             onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, enablePersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; // Added enablePersistence
+        import { getFirestore, doc, setDoc, getDoc, enablePersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"; 
 
         // Firebase variables for GitHub Pages deployment
         const appId = 'naman-jee-timetable-v1'; // This is your chosen app ID for Firestore data structure
