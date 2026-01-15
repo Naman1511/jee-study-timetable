@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Architect Pro | Backlog Persistence</title>
+    <title>JEE Architect Pro | The Final Countdown</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
@@ -26,6 +26,8 @@
         
         #toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 24px; border-radius: 12px; transform: translateY(100px); transition: transform 0.3s ease; z-index: 10000; }
         #toast.show { transform: translateY(0); }
+
+        .countdown-box { background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); }
     </style>
 </head>
 <body class="p-4 md:p-8 min-h-screen">
@@ -74,14 +76,19 @@
                     <p id="week-num" class="text-xl font-bold text-white">01</p>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tighter text-indigo-400">JEE ARCHITECT <span class="text-slate-500">PRO</span></h1>
-                    <p class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold italic">Persistence Engine: Enabled</p>
+                    <h1 class="text-2xl font-bold tracking-tighter text-indigo-400 uppercase">Mission 2027</h1>
+                    <div id="countdown" class="flex items-baseline gap-1 mt-1">
+                        <span id="cd-days" class="text-xl font-bold text-rose-500">000</span>
+                        <span class="text-[10px] uppercase font-bold text-rose-500/60 mr-2">Days</span>
+                        <span id="cd-hms" class="text-xs font-mono text-slate-400">00:00:00</span>
+                        <span class="text-[10px] uppercase font-bold text-slate-500/60">Remains</span>
+                    </div>
                 </div>
             </div>
             
             <div class="flex flex-wrap justify-center gap-3">
                 <button id="undo-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-4 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider">Undo</button>
-                <button id="update-week-btn" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-600/50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider">Manual Rollover</button>
+                <button id="update-week-btn" class="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 border border-indigo-600/50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider">Rollover</button>
                 <button id="trigger-modal-btn" class="bg-rose-600/20 hover:bg-rose-600/40 text-rose-400 border border-rose-600/50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all uppercase tracking-wider">Reset</button>
                 <button id="save-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/30 transition-all uppercase tracking-wider">Sync</button>
             </div>
@@ -143,6 +150,8 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
+        const TARGET_DATE = new Date('2027-01-10T00:00:00').getTime();
+
         const BASE_SCHEDULE = [
             { day: 'Mon', time: '17:00-21:30', sub: 'Physics', topic: 'Enter Topic...', done: false, isBacklog: false },
             { day: 'Tue', time: '17:00-21:30', sub: 'Chemistry', topic: 'Enter Topic...', done: false, isBacklog: false },
@@ -163,12 +172,28 @@
 
         const tableBody = document.getElementById('main-table');
 
-        function updateTime() {
+        function updateTimers() {
             const now = new Date();
-            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const daysArr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            
+            // Local Clock
             document.getElementById('digital-clock').textContent = now.toLocaleTimeString('en-GB', { hour12: false });
             document.getElementById('digital-date').textContent = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-            document.getElementById('current-day-display').textContent = days[now.getDay()];
+            document.getElementById('current-day-display').textContent = daysArr[now.getDay()];
+            
+            // Countdown Logic
+            const distance = TARGET_DATE - now.getTime();
+            if (distance < 0) {
+                document.getElementById('countdown').innerHTML = "<span class='text-rose-500 font-bold'>DEADLINE EXPIRED</span>";
+            } else {
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                document.getElementById('cd-days').textContent = days.toString().padStart(3, '0');
+                document.getElementById('cd-hms').textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
             
             // Auto Rollover (Monday 00:00)
             const todayStr = now.toLocaleDateString('en-GB');
@@ -329,8 +354,8 @@
                     state.data = BASE_SCHEDULE.map(i => ({...i, id: crypto.randomUUID()}));
                 }
                 render();
-                setInterval(updateTime, 1000);
-                updateTime();
+                setInterval(updateTimers, 1000);
+                updateTimers();
             } else {
                 signInAnonymously(auth);
             }
