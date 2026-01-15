@@ -123,7 +123,7 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // FALLBACK: Attempt to get config from environment or use a placeholder to prevent crashes
+        // Firebase configuration from environment
         let firebaseConfig;
         try {
             firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
@@ -140,21 +140,26 @@
         const timetableBody = document.getElementById('timetable-body');
         const mainMessageBox = document.getElementById('message-box');
         const loadingOverlay = document.getElementById('loading-overlay');
-        const authMessageBox = document.getElementById('auth-message-box');
 
+        let messageTimeout;
         function showMainMessage(msg, type = 'info') {
+            if (messageTimeout) clearTimeout(messageTimeout);
             mainMessageBox.textContent = msg;
             mainMessageBox.className = `text-center text-sm mt-6 p-3 rounded-md font-medium ${
                 type === 'error' ? 'bg-red-100 text-red-700' : 
                 type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
             }`;
             mainMessageBox.classList.remove('hidden');
+            
+            // Auto-hide after 5 seconds
+            messageTimeout = setTimeout(() => {
+                mainMessageBox.classList.add('hidden');
+            }, 5000);
         }
 
         if (!firebaseConfig.apiKey) {
-            userIdDisplay.textContent = "Error: Firebase Config Missing. Check console.";
+            userIdDisplay.textContent = "Error: Firebase Config Missing.";
             userIdDisplay.classList.add('text-red-600');
-            console.error("Critical: __firebase_config is not defined. Ensure you are running in the correct environment.");
         }
 
         const app = initializeApp(firebaseConfig);
@@ -192,7 +197,8 @@
             if (!currentUser) return;
             loadingOverlay.classList.remove('hidden');
             try {
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'data', 'current_week');
+                // RULE 1: Standardized Firestore Path
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'timetable_data', 'current_week');
                 const snap = await getDoc(docRef);
                 if (snap.exists() && snap.data().data) {
                     renderTimetable(JSON.parse(snap.data().data));
@@ -201,13 +207,13 @@
                 }
             } catch (err) {
                 console.error("Data Load Error:", err);
+                showMainMessage("Failed to load cloud data. Using defaults.", "error");
                 renderTimetable(defaultTimetableData);
             } finally {
                 loadingOverlay.classList.add('hidden');
             }
         }
 
-        // Rule 3: Auth before Queries with Robust Error Handling
         const initAuth = async () => {
             try {
                 if (initialAuthToken) {
@@ -216,16 +222,16 @@
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Auth Loop Error:", err);
-                userIdDisplay.textContent = "Auth Error: " + err.message;
-                userIdDisplay.classList.add('text-red-500');
+                console.error("Auth Error:", err);
+                userIdDisplay.textContent = "Authentication Error";
             }
         };
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) {
-                userIdDisplay.textContent = `User: ${user.email || 'Guest (' + user.uid.substring(0,6) + '...)'}`;
+                const label = user.isAnonymous ? "Guest" : user.email;
+                userIdDisplay.textContent = `Active Session: ${label} (${user.uid.substring(0, 8)}...)`;
                 userIdDisplay.classList.remove('text-red-500');
                 loadTimetable();
             } else {
@@ -233,46 +239,61 @@
             }
         });
 
-        // Sign Up / In / Out
+        // Sign Up / In / Out Logic
         document.getElementById('signup-btn').onclick = async () => {
             const email = document.getElementById('email-input').value;
             const password = document.getElementById('password-input').value;
-            try { await createUserWithEmailAndPassword(auth, email, password); } catch(e) { showMainMessage(e.message, 'error'); }
+            if (!email || !password) return showMainMessage("Enter email and password", "error");
+            try { 
+                await createUserWithEmailAndPassword(auth, email, password); 
+                showMainMessage("Account created!", "success");
+            } catch(e) { 
+                showMainMessage(e.message, 'error'); 
+            }
         };
 
         document.getElementById('signin-btn').onclick = async () => {
             const email = document.getElementById('email-input').value;
             const password = document.getElementById('password-input').value;
-            try { await signInWithEmailAndPassword(auth, email, password); } catch(e) { showMainMessage(e.message, 'error'); }
+            if (!email || !password) return showMainMessage("Enter email and password", "error");
+            try { 
+                await signInWithEmailAndPassword(auth, email, password); 
+                showMainMessage("Welcome back!", "success");
+            } catch(e) { 
+                showMainMessage(e.message, 'error'); 
+            }
         };
 
         document.getElementById('logout-btn').onclick = () => signOut(auth);
 
         document.getElementById('save-btn').onclick = async () => {
-            if (!currentUser) return showMainMessage("Sign in first!", "error");
+            if (!currentUser) return showMainMessage("Sign in required to save!", "error");
             loadingOverlay.classList.remove('hidden');
             try {
                 const rows = Array.from(timetableBody.querySelectorAll('tr'));
                 const data = rows.map(r => {
                     const c = r.querySelectorAll('td');
-                    return { day: c[0].textContent, time: c[1].textContent, subject: c[2].textContent, topic: c[3].textContent };
+                    return { 
+                        day: c[0].textContent, 
+                        time: c[1].textContent, 
+                        subject: c[2].textContent, 
+                        topic: c[3].textContent 
+                    };
                 });
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'data', 'current_week');
-                await setDoc(docRef, { data: JSON.stringify(data), updated: Date.now() });
-                showMainMessage("Saved successfully!", "success");
+                // RULE 1: Standardized Firestore Path
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'timetable_data', 'current_week');
+                await setDoc(docRef, { 
+                    data: JSON.stringify(data), 
+                    updated: Date.now(),
+                    userId: currentUser.uid 
+                });
+                showMainMessage("Timetable synced to cloud successfully!", "success");
             } catch (e) {
-                showMainMessage("Save failed: " + e.message, "error");
+                showMainMessage("Sync failed: " + e.message, "error");
             } finally {
                 loadingOverlay.classList.add('hidden');
             }
         };
-
-        // Service Worker registration
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('SW fail', err));
-            });
-        }
     </script>
 </body>
 </html>
