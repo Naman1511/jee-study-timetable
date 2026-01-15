@@ -3,48 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Study Timetable</title>
-    <!-- Tailwind CSS CDN -->
+    <title>JEE Study Timetable - Offline Enabled</title>
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom font for a clean look */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light blue-gray background */
-        }
-        /* Style for editable cells */
-        [contenteditable]:focus {
-            outline: 2px solid #6366f1; /* Indigo-500 for focus */
-            background-color: #e0e7ff; /* Light indigo background when editing */
-            border-radius: 0.375rem; /* rounded-md */
-        }
-        table td, table th {
-            border: 1px solid #cbd5e1; /* border-slate-300 */
-        }
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            border-radius: 0.75rem; /* rounded-xl */
-        }
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #6366f1;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        [contenteditable]:focus { outline: 2px solid #6366f1; background-color: #e0e7ff; border-radius: 0.375rem; }
+        table td, table th { border: 1px solid #cbd5e1; }
+        .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.7); display: flex; justify-content: center; align-items: center; z-index: 10; border-radius: 0.75rem; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #6366f1; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .status-badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 9999px; font-weight: 600; }
     </style>
 </head>
 <body class="p-4 sm:p-8 md:p-12 text-gray-800">
@@ -54,448 +23,213 @@
             <div class="spinner"></div>
         </div>
 
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-700 mb-6">Your Weekly JEE Study Timetable</h1>
-        <p class="text-center text-gray-600 mb-4">
-            Manage your study schedule efficiently. You can edit any cell directly by clicking on it.
-        </p>
-        <p id="user-id-display" class="text-center text-sm text-gray-500 mb-6">
-            User ID: Loading...
-        </p>
+        <div class="flex justify-between items-start mb-6">
+            <div>
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-indigo-700">JEE Study Timetable</h1>
+                <p id="user-id-display" class="text-sm text-gray-500 mt-1">User: Loading...</p>
+            </div>
+            <div id="offline-status" class="status-badge bg-gray-200 text-gray-600">Checking Connectivity...</div>
+        </div>
 
-        <!-- User Account Section -->
-        <div class="bg-indigo-100 p-4 rounded-lg mb-6 shadow-sm">
-            <h2 class="text-lg font-semibold text-indigo-800 mb-3">User Account</h2>
+        <!-- Auth Section -->
+        <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg mb-6 shadow-sm">
             <div class="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-3 sm:space-y-0">
                 <div class="flex-grow">
-                    <label for="email-input" class="block text-sm font-medium text-gray-700">Email:</label>
-                    <input type="email" id="email-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2" placeholder="your.email@example.com">
+                    <label class="block text-xs font-bold text-indigo-600 uppercase mb-1">Email</label>
+                    <input type="email" id="email-input" class="w-full rounded-md border-gray-300 p-2 text-sm" placeholder="Email">
                 </div>
                 <div class="flex-grow">
-                    <label for="password-input" class="block text-sm font-medium text-gray-700">Password:</label>
-                    <input type="password" id="password-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2" placeholder="********">
+                    <label class="block text-xs font-bold text-indigo-600 uppercase mb-1">Password</label>
+                    <input type="password" id="password-input" class="w-full rounded-md border-gray-300 p-2 text-sm" placeholder="Password">
                 </div>
                 <div class="flex space-x-2">
-                    <button id="signup-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 transform hover:scale-105 text-sm">
-                        Sign Up
-                    </button>
-                    <button id="signin-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 transform hover:scale-105 text-sm">
-                        Sign In
-                    </button>
-                    <button id="logout-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 transform hover:scale-105 text-sm">
-                        Log Out
-                    </button>
+                    <button id="signup-btn" class="bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">Sign Up</button>
+                    <button id="signin-btn" class="bg-indigo-500 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-indigo-600 transition">Sign In</button>
+                    <button id="logout-btn" class="bg-gray-400 text-white py-2 px-4 rounded-lg text-sm font-semibold hover:bg-gray-500 transition">Log Out</button>
                 </div>
             </div>
-            <p id="auth-message-box" class="text-center text-sm mt-3 hidden rounded-md p-2"></p>
+            <p id="auth-message-box" class="text-center text-xs mt-3 hidden p-2 rounded bg-white border"></p>
         </div>
-        <!-- End User Account Section -->
 
-        <!-- Instructions Section -->
-        <div class="bg-indigo-50 p-4 rounded-lg mb-6 shadow-sm">
-            <h2 class="text-lg font-semibold text-indigo-800 mb-2">How to Use Your Timetable:</h2>
-            <ul class="list-disc list-inside text-gray-700 space-y-1">
-                <li>**Edit Any Cell:** Click directly on the "Time Slot", "Subject", or "Topic & Action" cells to edit their content.</li>
-                <li>**Save Your Changes:** After making edits, click the "<span class="font-bold text-green-700">Save Edits</span>" button. Your changes will be saved to the cloud and will be available on any device you use to access this timetable.</li>
-                <li>**Generate Next Week:** Click the "<span class="font-bold text-blue-700">Generate Next Week's Timetable</span>" button when you are ready for a new plan. This will prompt you to ask me (your AI mentor) in the chat to provide the updated schedule.</li>
-                <li>**User ID:** Your unique User ID is displayed below the title. This ID links your timetable to your cloud storage.</li>
-            </ul>
-        </div>
-        <!-- End Instructions Section -->
-
-
-        <div class="overflow-x-auto rounded-lg shadow-md">
+        <div class="overflow-x-auto rounded-lg shadow-md border border-gray-200">
             <table class="w-full text-left table-auto border-collapse">
-                <thead class="bg-indigo-600 text-white rounded-t-lg">
+                <thead class="bg-indigo-600 text-white">
                     <tr>
-                        <th class="p-4 rounded-tl-lg">Day</th>
-                        <th class="p-4">Time Slot</th>
-                        <th class="p-4">Subject</th>
-                        <th class="p-4 rounded-tr-lg">Topic & Action</th>
+                        <th class="p-4 w-32">Day</th>
+                        <th class="p-4 w-48">Time Slot</th>
+                        <th class="p-4 w-48">Subject</th>
+                        <th class="p-4">Topic & Action</th>
                     </tr>
                 </thead>
-                <tbody id="timetable-body" class="bg-white divide-y divide-gray-200">
-                    <!-- Timetable rows will be inserted here by JavaScript -->
+                <tbody id="timetable-body" class="bg-white divide-y divide-gray-100">
+                    <!-- Table data generated via JS -->
                 </tbody>
             </table>
         </div>
 
         <div class="flex justify-center mt-8 space-x-4">
-            <button id="next-week-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
-                Generate Next Week's Timetable
-            </button>
-            <button id="save-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
-                Save Edits
+            <button id="save-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105">
+                Save Changes (Cloud Sync)
             </button>
         </div>
 
-        <p id="message-box" class="text-center text-sm mt-6 hidden rounded-md p-3">
-            <!-- Messages like "Saving...", "Saved!", "Error..." will appear here -->
-        </p>
+        <p id="message-box" class="text-center text-sm mt-6 hidden rounded-md p-3 font-medium"></p>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-app.js";
-        import {
-            getAuth,
-            signInAnonymously,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
-            signOut,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-auth.js";
-        // Removed enablePersistence import as it's not needed without offline support
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore.js"; 
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase variables for GitHub Pages deployment
-        const appId = 'naman-jee-timetable-v1'; // This is your chosen app ID for Firestore data structure
+        // Environment Setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'naman-jee-timetable-v1';
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // IMPORTANT: Paste YOUR Firebase project's configuration object here.
-        // This comes directly from your Firebase Console > Project settings > Your apps > Web app.
-        // Make sure it matches exactly what you get from Firebase.
-        const firebaseConfig = {
-          apiKey: "AIzaSyAtEkwhZaj3S9v65sAHf8RueNqvC1Q4e5Q",
-          authDomain: "naman-4512.firebaseapp.com",
-          projectId: "naman-4512",
-          storageBucket: "naman-4512.firebasestorage.app",
-          messagingSenderId: "743969813458",
-          appId: "1:743969813458:web:e7a0ac39853e93ba2f8e0b" // This is the Firebase-provided App ID for your web app
-        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        // For GitHub Pages, we'll use anonymous sign-in directly.
-        const initialAuthToken = null; // No custom token for external hosting
+        // --- SERVICE WORKER REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').then(reg => {
+                    console.log('SW Registered', reg);
+                }).catch(err => console.log('SW Reg Failed', err));
+            });
+        }
 
-        let app, db, auth, userId;
-        let isAuthReady = false;
+        // --- FIRESTORE OFFLINE PERSISTENCE ---
+        enableIndexedDbPersistence(db).catch((err) => {
+            const statusEl = document.getElementById('offline-status');
+            if (err.code == 'failed-precondition') {
+                statusEl.textContent = "Online Only (Tab Conflict)";
+            } else if (err.code == 'unimplemented') {
+                statusEl.textContent = "Online Only (Unsupported)";
+            }
+        });
 
-        // UI Elements
-        const emailInput = document.getElementById('email-input');
-        const passwordInput = document.getElementById('password-input');
-        const signupBtn = document.getElementById('signup-btn');
-        const signinBtn = document.getElementById('signin-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const authMessageBox = document.getElementById('auth-message-box');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const timetableBody = document.getElementById('timetable-body'); // Global reference for saveEdits
+        // Connectivity Management
+        window.addEventListener('online', () => updateStatus(true));
+        window.addEventListener('offline', () => updateStatus(false));
+        function updateStatus(isOnline) {
+            const el = document.getElementById('offline-status');
+            if (isOnline) {
+                el.textContent = "Cloud Connected";
+                el.className = "status-badge bg-green-100 text-green-700";
+            } else {
+                el.textContent = "Offline Mode (Local Cache)";
+                el.className = "status-badge bg-orange-100 text-orange-700";
+            }
+        }
+        updateStatus(navigator.onLine);
 
-        // Utility function for showing messages
+        let userId;
+        const timetableBody = document.getElementById('timetable-body');
         const mainMessageBox = document.getElementById('message-box');
-        const loadingOverlay = document.getElementById('loading-overlay');
 
-        function showLoading() { loadingOverlay.classList.remove('hidden'); }
-        function hideLoading() { loadingOverlay.classList.add('hidden'); }
+        // Default Data Structure
+        const defaultTimetable = [
+            { day: 'Monday', time: '5:15 PM - 9:30 PM', subject: 'Physics & Math', topic: 'Kinematics & Trigo Basics' },
+            { day: 'Tuesday', time: '5:15 PM - 9:30 PM', subject: 'Chemistry', topic: 'Mole Concept' },
+            { day: 'Wednesday', time: '5:15 PM - 9:30 PM', subject: 'Math', topic: 'Modulus Equations' },
+            { day: 'Thursday', time: '5:15 PM - 9:30 PM', subject: 'Physics', topic: 'Vectors' },
+            { day: 'Friday', time: '5:15 PM - 9:30 PM', subject: 'Chemistry', topic: 'Stoichiometry' },
+            { day: 'Saturday', time: '9:00 AM - 6:30 PM', subject: 'Review', topic: 'Problem Solving' },
+            { day: 'Sunday', time: '9:00 AM - 12:00 PM', subject: 'Rest/Revision', topic: 'Analysis' }
+        ];
 
         function showMainMessage(msg, type = 'info') {
             mainMessageBox.textContent = msg;
-            mainMessageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
-            if (type === 'error') {
-                mainMessageBox.classList.add('bg-red-100', 'text-red-700');
-            } else if (type === 'success') {
-                mainMessageBox.classList.add('bg-green-100', 'text-green-700');
-            } else {
-                mainMessageBox.classList.add('bg-blue-100', 'text-blue-700');
-            }
+            mainMessageBox.className = `text-center text-sm mt-6 rounded-md p-3 font-medium ${type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`;
             mainMessageBox.style.display = 'block';
             setTimeout(() => { mainMessageBox.style.display = 'none'; }, 5000);
         }
 
-        function showAuthMessage(msg, type = 'info') {
-            authMessageBox.textContent = msg;
-            authMessageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
-            if (type === 'error') {
-                authMessageBox.classList.add('bg-red-100', 'text-red-700');
-            } else if (type === 'success') {
-                authMessageBox.classList.add('bg-green-100', 'text-green-700');
-            } else {
-                authMessageBox.classList.add('bg-blue-100', 'text-blue-700');
-            }
-            authMessageBox.style.display = 'block';
-            setTimeout(() => { authMessageBox.style.display = 'none'; }, 5000);
-        }
-
-
-        // Function to get the current week's document ID
-        function getCurrentWeekDocId() {
-            const today = new Date();
-            const firstDayOfWeek = new Date(today);
-            const currentDay = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
-            const diff = currentDay >= 2 ? currentDay - 2 : currentDay + 5; // Calculate days to Tuesday
-            firstDayOfWeek.setDate(today.getDate() - diff);
-            firstDayOfWeek.setHours(0, 0, 0, 0);
-
-            const lastDayOfWeek = new Date(firstDayOfWeek);
-            lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-            lastDayOfWeek.setHours(23, 59, 59, 999);
-
-            const startYYYYMMDD = `${firstDayOfWeek.getFullYear()}-${(firstDayOfWeek.getMonth() + 1).toString().padStart(2, '0')}-${firstDayOfWeek.getDate().toString().padStart(2, '0')}`;
-            const endYYYYMMDD = `${lastDayOfWeek.getFullYear()}-${(lastDayOfWeek.getMonth() + 1).toString().padStart(2, '0')}-${lastDayOfWeek.getDate().toString().padStart(2, '0')}`;
-            return `week_${startYYYYMMDD}_to_${endYYYYMMDD}`;
-        }
-
-        // Default timetable data for the current week (June 18 - June 24, 2025)
-        const defaultTimetableData = [
-            // Wednesday, June 18, 2025
-            { day: 'Wednesday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
-            { day: 'Wednesday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
-            { day: 'Wednesday', time: '5:15 PM - 6:15 PM', subject: 'Chemistry (Missed: Mole Concept Intro)', topic: 'Review BASE notes, NCERT Class 11 Ch 1 (Basic Concepts of Chemistry). Focus on Mole Concept Intro, Atomic/Molecular Mass, Moles from Mass/Volume. Solve NCERT in-text/initial end-of-chapter problems.' },
-            { day: 'Wednesday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
-            { day: 'Wednesday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Missed: Basic Trigo)', topic: 'Review NCERT Class 10 Ch 8 & 9, S.L. Loney Ch 1 & 2 (Basic Trigo Ratios, Identities, Standard Angles). Solve ALL examples/exercises. Start Mistake Notebook.' },
-            { day: 'Wednesday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
-            { day: 'Wednesday', time: '8:45 PM - 9:30 PM', subject: 'Physics (Kinematics - Intro & Equations)', topic: 'Review BASE notes, NCERT Class 11 Ch 3 (Kinematics Intro, Distance, Displacement, Speed, Velocity, Acceleration, Equations of Motion). Solve NCERT examples, start H.C. Verma Vol I Ch 3 theory/first solved examples.' },
-
-            // Thursday, June 19, 2025
-            { day: 'Thursday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
-            { day: 'Thursday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
-            { day: 'Thursday', time: '5:15 PM - 6:15 PM', subject: 'Mathematics (Mod Equations - Introduction)', topic: 'Modulus Equations - Basics (Definition, Properties, Simple Equations). Review BASE notes, work through solved examples from coaching module.' },
-            { day: 'Thursday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
-            { day: 'Thursday', time: '6:45 PM - 8:15 PM', subject: 'Physics (Kinematics - Problem Solving)', topic: 'Kinematics (Mixed Problem Solving with basic concepts). Solve H.C. Verma Vol I Ch 3 (Objective I & II, 10-15 problems). Add tricky problems to Mistake Notebook.' },
-            { day: 'Thursday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
-            { day: 'Thursday', time: '8:45 PM - 9:30 PM', subject: 'Chemistry (Stoichiometry Intro)', topic: 'Stoichiometry (Introduction, Limiting Reagent - Theory). Review BASE notes, NCERT Class 11 Ch 1. Focus on understanding concepts.' },
-
-            // Friday, June 20, 2025
-            { day: 'Friday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
-            { day: 'Friday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
-            { day: 'Friday', time: '5:15 PM - 6:15 PM', subject: 'Chemistry (Stoichiometry Numerical Problems)', topic: 'Solve numericals from BASE module. Refer to solved examples in NCERT/module.' },
-            { day: 'Friday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
-            { day: 'Friday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Mod Equations & Trigo Review)', topic: 'Mod Equations (Problem Solving - 15-20 problems from BASE module). Trigo Review (30 min - Compound, Multiple, Submultiple Angles from S.L. Loney/module, 5-7 mixed problems). Update Mistake Notebook.' },
-            { day: 'Friday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
-            { day: 'Friday', time: '8:45 PM - 9:30 PM', subject: 'Physics (Motion Under Gravity)', topic: 'Kinematics - Motion under Gravity. Review BASE notes, NCERT Class 11 Ch 3. Solve a few short answer/conceptual questions from H.C. Verma.' },
-
-            // Saturday, June 21, 2025
-            { day: 'Saturday', time: '9:00 AM - 10:30 AM', subject: 'Mathematics (Trigonometry Deep Dive & Problem Solving)', topic: 'Comprehensive problem solving (20-25 problems) from S.L. Loney/BASE module on all Trigo topics covered. Update Mistake Notebook rigorously.' },
-            { day: 'Saturday', time: '10:30 AM - 11:00 AM', subject: 'Short Break', topic: '' },
-            { day: 'Saturday', time: '11:00 AM - 1:00 PM', subject: 'Physics (Kinematics Comprehensive Problem Solving)', topic: 'Solve more problems from H.C. Verma Vol I Ch 3 (objective, subjective, BASE examples). Focus on motion under gravity and initial 2D kinematics. Analyze solutions.' },
-            { day: 'Saturday', time: '1:00 PM - 2:30 PM', subject: 'Lunch Break', topic: '' },
-            { day: 'Saturday', time: '2:30 PM - 4:00 PM', subject: 'Chemistry (Concept Consolidation)', topic: 'Reread NCERT Ch 1. Solve ALL remaining NCERT end-of-chapter problems. Solve 15-20 problems from BASE module (all aspects of Ch 1).' },
-            { day: 'Saturday', time: '4:00 PM - 4:30 PM', subject: 'Short Break', topic: '' },
-            { day: 'Saturday', time: '4:30 PM - 6:30 PM', subject: 'Mathematics (Mod Equations - Comprehensive Problem Solving)', topic: 'Solve tougher problems from coaching module on Modulus Equations (inequalities, graphs, different cases). Add to Mistake Notebook.' },
-
-            // Sunday, June 22, 2025
-            { day: 'Sunday', time: '9:00 AM - 10:30 AM', subject: 'Weekly Revision - All Subjects', topic: 'Quickly review all coaching notes, self-study notes/highlights. Focus on difficult/important concepts.' },
-            { day: 'Sunday', time: '10:30 AM - 11:00 AM', subject: 'Short Break', topic: '' },
-            { day: 'Sunday', time: '11:00 AM - 12:00 PM', subject: 'Error Analysis & Planning', topic: 'Go through Mistake Notebook. Re-attempt problems. Identify weak concepts. Plan next week\'s study approach.' },
-            { day: 'Sunday', time: 'Post 12:00 PM', subject: 'Rest and Recharge', topic: 'Absolutely no academic study. Engage in hobbies, spend time with family.' },
-
-            // Monday, June 23, 2025
-            { day: 'Monday', time: '8:20 AM - 4:30 PM', subject: 'PUC & BASE Coaching Classes', topic: 'Be attentive, take notes, ask questions.' },
-            { day: 'Monday', time: '4:30 PM - 5:15 PM', subject: 'Transition & Break', topic: 'Travel home, freshen up, light snack.' },
-            { day: 'Monday', time: '5:15 PM - 6:15 PM', subject: 'Physics (2D Motion Intro)', topic: 'Kinematics - 2D Motion (Vectors Intro, Projectile Motion - Theory). Review BASE notes, NCERT Class 11 Ch 4. Focus on vector addition/subtraction and basic projectile motion.' },
-            { day: 'Monday', time: '6:15 PM - 6:45 PM', subject: 'Short Break', topic: '' },
-            { day: 'Monday', time: '6:45 PM - 8:15 PM', subject: 'Mathematics (Advanced Trigo / Sets & Relations Review)', topic: 'Trigonometric Equations / Inverse Trigo Functions (S.L. Loney/BASE module). OR: Quick review of Sets & Relations (30-45 min from NCERT/coaching notes).' },
-            { day: 'Monday', time: '8:15 PM - 8:45 PM', subject: 'Dinner Break', topic: '' },
-            { day: 'Monday', time: '8:45 PM - 9:30 PM', subject: 'Chemistry (Revision & Problem Solving)', topic: 'Mole Concept & Stoichiometry (Mixed Problems). Solve 10-15 mixed problems from BASE module. Review Mistake Notebook.' },
-        ];
-
-
-        // Function to render the timetable from data
-        function renderTimetable(data) {
-            timetableBody.innerHTML = ''; // Clear existing rows
-            data.forEach(item => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50';
-
-                row.innerHTML = `
-                    <td class="p-4">${item.day}</td>
-                    <td class="p-4" contenteditable="true" data-field="time">${item.time}</td>
-                    <td class="p-4" contenteditable="true" data-field="subject">${item.subject}</td>
-                    <td class="p-4" contenteditable="true" data-field="topic">${item.topic}</td>
-                `;
-                timetableBody.appendChild(row);
-            });
-        }
-
-        // Function to load timetable data from Firestore
         async function loadTimetable() {
-            showLoading();
+            if (!userId) return;
+            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'timetables', 'current_week');
             try {
-                if (!userId || !db) { // Ensure userId and db are available
-                    showMainMessage('Initialization in progress. Please wait for User ID.', 'info');
-                    hideLoading();
-                    return;
-                }
-                const docId = getCurrentWeekDocId();
-                const timetableDocRef = doc(db, `artifacts/${appId}/users/${userId}/timetables`, docId);
-                const docSnap = await getDoc(timetableDocRef);
-
-                if (docSnap.exists() && docSnap.data().data) {
-                    const loadedData = JSON.parse(docSnap.data().data);
-                    renderTimetable(loadedData);
-                    showMainMessage('Timetable loaded from cloud!', 'success');
+                // If offline, this reads from local IndexedDB cache automatically
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    renderTable(JSON.parse(snap.data().data));
                 } else {
-                    renderTimetable(defaultTimetableData);
-                    // Save default data if it doesn't exist for this user/week
-                    await setDoc(timetableDocRef, { data: JSON.stringify(defaultTimetableData) });
-                    showMainMessage('Default timetable loaded and saved to cloud. You can edit it!', 'info');
+                    renderTable(defaultTimetable);
                 }
-            } catch (error) {
-                console.error("Error loading timetable: ", error);
-                showMainMessage(`Error loading timetable: ${error.message}. Please check Firestore rules and network.`, 'error');
-                renderTimetable(defaultTimetableData); // Fallback to default on error
-            } finally {
-                hideLoading();
+            } catch (err) {
+                console.error("Load error:", err);
             }
         }
 
-        // Function to save edits to Firestore
+        function renderTable(data) {
+            timetableBody.innerHTML = data.map(item => `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="p-4 font-semibold text-indigo-600">${item.day}</td>
+                    <td class="p-4" contenteditable="true">${item.time}</td>
+                    <td class="p-4" contenteditable="true">${item.subject}</td>
+                    <td class="p-4 text-sm" contenteditable="true">${item.topic}</td>
+                </tr>`).join('');
+        }
+
         async function saveEdits() {
-            showLoading();
-            showMainMessage('Saving edits...', 'info');
+            if (!userId) {
+                showMainMessage("Login required to sync!", "error");
+                return;
+            }
+            const rows = Array.from(timetableBody.querySelectorAll('tr')).map(row => {
+                const cells = row.querySelectorAll('td');
+                return { 
+                    day: cells[0].textContent, 
+                    time: cells[1].textContent, 
+                    subject: cells[2].textContent, 
+                    topic: cells[3].textContent 
+                };
+            });
+            const docRef = doc(db, 'artifacts', appId, 'users', userId, 'timetables', 'current_week');
             try {
-                if (!userId || !db) { // Ensure userId and db are available
-                    showMainMessage('User not authenticated or Firebase not initialized. Cannot save. Please refresh the page or sign in.', 'error');
-                    hideLoading();
-                    return;
-                }
-                // Collect current data from the table
-                const timetableData = [];
-                const rows = timetableBody.querySelectorAll('tr');
-                rows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    timetableData.push({
-                        day: cells[0].textContent,
-                        time: cells[1].textContent,
-                        subject: cells[2].textContent,
-                        topic: cells[3].textContent,
-                    });
-                });
-
-                const docId = getCurrentWeekDocId();
-                const timetableDocRef = doc(db, `artifacts/${appId}/users/${userId}/timetables`, docId);
-                await setDoc(timetableDocRef, { data: JSON.stringify(timetableData) });
-                showMainMessage('Edits saved to cloud successfully!', 'success');
-            } catch (error) {
-                console.error("Error saving timetable: ", error);
-                showMainMessage(`Error saving timetable: ${error.message}. Please check Firebase rules or network.`, 'error');
-            } finally {
-                hideLoading();
+                // This will save locally even if offline and sync when back online
+                await setDoc(docRef, { data: JSON.stringify(rows), lastUpdated: Date.now() });
+                showMainMessage('Changes saved locally & queued for sync!', 'success');
+            } catch (err) {
+                showMainMessage('Save Error: ' + err.message, 'error');
             }
         }
 
-        // --- Authentication Functions ---
-
-        // Handle user registration
-        signupBtn.addEventListener('click', async () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            if (!email || !password) {
-                showAuthMessage('Please enter both email and password.', 'error');
-                return;
-            }
-            showAuthMessage('Signing up...', 'info');
-            showLoading();
+        const initAuth = async () => {
             try {
-                const credential = await createUserWithEmailAndPassword(auth, email, password);
-                // After sign-up, link anonymous data to new user if any
-                if (auth.currentUser && auth.currentUser.isAnonymous) {
-                     // This part needs a server-side function to link anonymous data to the new user.
-                     // For a client-side only app, the anonymous data remains under the anonymous ID
-                     // and new data for the email user starts fresh or is fetched if existing.
-                     // If you had data under the anonymous ID you wanted to preserve, you'd save it
-                     // and then load it under the new email ID.
+                if (initialToken) {
+                    await signInWithCustomToken(auth, initialToken);
+                } else {
+                    await signInAnonymously(auth);
                 }
-                showAuthMessage('Sign up successful! You are now logged in.', 'success');
-                // onAuthStateChanged listener will handle loading data for the new user
-            } catch (error) {
-                console.error("Error during sign up:", error);
-                showAuthMessage(`Sign up failed: ${error.message}`, 'error');
-            } finally {
-                hideLoading();
-            }
-        });
+            } catch (err) { console.error("Auth init failed", err); }
+        };
 
-        // Handle user sign-in
-        signinBtn.addEventListener('click', async () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            if (!email || !password) {
-                showAuthMessage('Please enter both email and password.', 'error');
-                return;
-            }
-            showAuthMessage('Signing in...', 'info');
-            showLoading();
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                showAuthMessage('Sign in successful!', 'success');
-                // onAuthStateChanged listener will handle loading data for the signed-in user
-            } catch (error) {
-                console.error("Error during sign in:", error);
-                showAuthMessage(`Sign in failed: ${error.message}`, 'error');
-            } finally {
-                hideLoading();
-            }
-        });
-
-        // Handle user logout
-        logoutBtn.addEventListener('click', async () => {
-            showAuthMessage('Logging out...', 'info');
-            showLoading();
-            try {
-                await signOut(auth);
-                showAuthMessage('Logged out successfully. You are now anonymous.', 'success');
-                // onAuthStateChanged listener will handle re-authenticating as anonymous
-            } catch (error) {
-                console.error("Error during logout:", error);
-                showAuthMessage(`Logout failed: ${error.message}`, 'error');
-            } finally {
-                hideLoading();
-            }
-        });
-
-        // Placeholder for "Next Week" functionality - This button will trigger a request to the AI
-        function generateNextWeekTimetable() {
-            showMainMessage('Please ask me in the chat to generate the timetable for the next week!', 'info');
-            // When the user clicks this, they will prompt you (the AI) in the chat.
-            // You will then update the `defaultTimetableData` variable in the code with the new week's content
-            // and re-render the immersive.
-        }
-
-        // --- Initialize App and Listen for Auth State Changes ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            // PWA Service Worker registration removed
-            
-            if (Object.keys(firebaseConfig).length > 0) {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-
-                // Firestore Persistence (offline support) removed
-                
-                console.log("Firebase Config Loaded:", firebaseConfig); // For debugging
-
-                // Use onAuthStateChanged to manage user state and data loading
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        // Display email if available, otherwise anonymous ID
-                        userIdDisplay.textContent = `User ID: ${user.email || 'Anonymous (' + user.uid + ')'} (Logged In)`;
-                        isAuthReady = true;
-                        await loadTimetable(); // Load data for the current user
-                    } else {
-                        // No user signed in (e.g., first load or after logout), attempt anonymous sign-in
-                        userIdDisplay.textContent = 'User ID: Attempting Anonymous Sign-in...';
-                        try {
-                            const userCredential = await signInAnonymously(auth);
-                            userId = userCredential.user.uid;
-                            userIdDisplay.textContent = `User ID: Anonymous (${userId}) (Logged In)`;
-                            isAuthReady = true;
-                            await loadTimetable(); // Load data for the anonymous user
-                        } catch (error) {
-                            console.error("Error during anonymous authentication:", error);
-                            showMainMessage(`Critical Authentication Error: ${error.message}. Please ensure Anonymous and Email/Password sign-in methods are enabled in your Firebase Project's Authentication settings, and your API Key is valid.`, 'error');
-                            renderTimetable(defaultTimetableData); // Fallback to default
-                            hideLoading(); // Ensure loading spinner is hidden
-                        }
-                    }
-                });
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                userId = user.uid;
+                document.getElementById('user-id-display').textContent = `User: ${user.email || user.uid.substring(0,8) + '...'}`;
+                loadTimetable();
             } else {
-                showMainMessage("Firebase config not found. Data will not be saved. Please provide firebaseConfig.", 'error');
-                renderTimetable(defaultTimetableData);
-                hideLoading();
+                initAuth();
             }
-
-            // Event Listeners for main buttons
-            document.getElementById('next-week-btn').addEventListener('click', generateNextWeekTimetable);
-            document.getElementById('save-btn').addEventListener('click', saveEdits);
         });
+
+        // Event Listeners
+        document.getElementById('save-btn').onclick = saveEdits;
+        document.getElementById('signin-btn').onclick = () => {
+            const e = document.getElementById('email-input').value;
+            const p = document.getElementById('password-input').value;
+            signInWithEmailAndPassword(auth, e, p).catch(err => showMainMessage(err.message, 'error'));
+        };
+        document.getElementById('signup-btn').onclick = () => {
+            const e = document.getElementById('email-input').value;
+            const p = document.getElementById('password-input').value;
+            createUserWithEmailAndPassword(auth, e, p).catch(err => showMainMessage(err.message, 'error'));
+        };
+        document.getElementById('logout-btn').onclick = () => signOut(auth);
+
     </script>
 </body>
 </html>
