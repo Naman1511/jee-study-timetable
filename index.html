@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Architect Pro | Weekly Engine</title>
+    <title>JEE Architect Pro | External Build</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap');
@@ -37,7 +37,7 @@
     <div id="custom-modal">
         <div class="glass p-8 rounded-3xl max-w-sm w-full mx-4 border-indigo-500/30">
             <h3 class="text-xl font-bold mb-2">Reset for New Week?</h3>
-            <p id="modal-text" class="text-slate-400 text-sm mb-6">This will increment the week and clear all topics/checkboxes for a fresh start.</p>
+            <p id="modal-text" class="text-slate-400 text-sm mb-6">This will increment the week and clear all topics for a fresh start.</p>
             <div class="flex gap-4">
                 <button onclick="closeModal()" class="flex-1 px-4 py-2 rounded-xl bg-slate-800 text-xs font-bold uppercase tracking-widest">Cancel</button>
                 <button id="modal-confirm-btn" class="flex-1 px-4 py-2 rounded-xl bg-indigo-600 text-xs font-bold uppercase tracking-widest shadow-lg shadow-indigo-500/20">Confirm</button>
@@ -56,7 +56,7 @@
                 </div>
                 <div>
                     <h1 class="text-2xl font-bold tracking-tighter text-indigo-400">JEE ARCHITECT <span class="text-slate-500">PRO</span></h1>
-                    <p id="user-info" class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold italic">Syncing Cloud...</p>
+                    <p id="user-info" class="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold italic">Cloud Connection Active</p>
                 </div>
             </div>
             
@@ -72,7 +72,7 @@
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="glass p-4 rounded-2xl border-l-4 border-indigo-500">
-                <p class="text-[10px] uppercase text-slate-500 font-bold mb-1">Target</p>
+                <p class="text-[10px] uppercase text-slate-500 font-bold mb-1">Weekly Target</p>
                 <p class="text-lg font-bold">28 Hours</p>
             </div>
             <div id="completion-stat" class="glass p-4 rounded-2xl border-l-4 border-emerald-500">
@@ -109,17 +109,27 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const getConfig = () => JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const getAppId = () => typeof __app_id !== 'undefined' ? __app_id : 'jee-planner-v1';
-        const getAuthToken = () => typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // ======================================================
+        // STOP: REPLACE THIS OBJECT WITH YOUR FIREBASE CONFIG
+        // Find this in: Firebase Console > Project Settings > General
+        // ======================================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCnL4y5BDvlA0N1zfZnuhz97TokrpFI1Og",
+            authDomain: "jee-timetable.firebaseapp.com",
+            projectId: "jee-timetable",
+            storageBucket: "jee-timetable.firebasestorage.app",
+            messagingSenderId: "698764346076",
+            appId: "1:698764346076:web:c1cc2b80aeb2fafd886a19",
+            measurementId: "G-6EKJ4FJBEX"
+        };
+        // ======================================================
 
-        const app = initializeApp(getConfig());
+        const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = getAppId();
 
         const tableBody = document.getElementById('main-table');
 
@@ -181,9 +191,10 @@
             const user = auth.currentUser;
             if (!user) return;
             try {
-                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
-                await setDoc(docRef, { state: JSON.stringify(state) });
-            } catch (e) { console.error(e); }
+                // Using a hardcoded path for external project stability
+                const docRef = doc(db, 'jee_data', user.uid);
+                await setDoc(docRef, { state: JSON.stringify(state), lastUpdated: Date.now() });
+            } catch (e) { console.error("Cloud Error:", e); }
         };
 
         document.getElementById('save-btn').onclick = async () => {
@@ -197,7 +208,6 @@
 
         document.getElementById('modal-confirm-btn').onclick = async () => {
             state.week += 1;
-            // The Logic: Uncheck everything AND reset the topic field
             state.data = state.data.map(item => ({ 
                 ...item, 
                 done: false, 
@@ -206,26 +216,17 @@
             render();
             await saveToCloud();
             window.closeModal();
-            showToast(`Welcome to Week ${state.week}`);
-        };
-
-        const initAuth = async () => {
-            const token = getAuthToken();
-            try {
-                if (token) await signInWithCustomToken(auth, token);
-                else await signInAnonymously(auth);
-            } catch (e) { console.error(e); }
+            showToast(`Week ${state.week} Started`);
         };
 
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('user-info').textContent = `Sync: Active (${user.uid.slice(0,5)})`;
-                const snap = await getDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable'));
+                const snap = await getDoc(doc(db, 'jee_data', user.uid));
                 if (snap.exists()) state = JSON.parse(snap.data().state);
                 render();
             } else {
-                initAuth();
+                signInAnonymously(auth).catch(e => console.error("Auth Error:", e));
             }
         });
     </script>
