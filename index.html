@@ -3,72 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JEE Study Timetable</title>
-    <link rel="icon" href="data:,">
+    <title>JEE Study Architecture</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
-        .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; border-radius: 0.75rem; }
-        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #6366f1; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .loading-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; transition: opacity 0.3s ease; }
+        .spinner { border: 4px solid #e2e8f0; border-left-color: #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        [contenteditable]:focus { background: #fefce8; outline: 2px solid #6366f1; border-radius: 4px; }
+        .hidden { display: none !important; }
+        [contenteditable]:focus { background: #fffbeb; outline: 2px solid #6366f1; border-radius: 4px; }
     </style>
 </head>
-<body class="p-4 sm:p-8 md:p-12 text-gray-800">
+<body class="p-4 md:p-8">
 
-    <div id="app-container" class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 lg:p-10 mb-8 relative border border-gray-100 min-h-[400px]">
+    <div id="app-container" class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-6 relative border border-slate-200 min-h-[500px]">
         
+        <!-- Persistent Overlay -->
         <div id="loading-overlay" class="loading-overlay">
             <div class="spinner"></div>
-            <p class="mt-4 text-sm font-medium text-gray-500">Connecting to JEE Cloud...</p>
+            <p class="mt-4 text-sm font-bold text-slate-600 tracking-tight">CONNECTING TO JEE CLOUD...</p>
         </div>
 
-        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 border-b pb-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b pb-6">
             <div>
-                <h1 class="text-3xl font-extrabold text-indigo-700">JEE Study Architecture</h1>
-                <p id="auth-status" class="text-sm font-semibold text-gray-500 mt-1 italic">Waiting for Auth...</p>
+                <h1 class="text-3xl font-black text-slate-900 tracking-tighter">JEE <span class="text-indigo-600">ARCHITECTURE</span></h1>
+                <p id="auth-status" class="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Initializing Session...</p>
             </div>
-            <div class="flex gap-2">
-                <div id="sync-indicator" class="flex items-center px-3 py-1 bg-gray-100 rounded-full text-xs font-bold text-gray-400">
-                    <span class="w-2 h-2 rounded-full bg-gray-300 mr-2"></span> OFFLINE
-                </div>
+            <div id="sync-indicator" class="flex items-center px-4 py-2 bg-slate-100 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <span class="w-2 h-2 rounded-full bg-slate-300 mr-2"></span> OFFLINE MODE
             </div>
         </div>
 
-        <!-- Auth Section -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <input type="email" id="email-field" placeholder="Student Email" class="p-2 rounded-lg border focus:ring-2 focus:ring-indigo-400 outline-none text-sm">
-            <input type="password" id="pass-field" placeholder="Password" class="p-2 rounded-lg border focus:ring-2 focus:ring-indigo-400 outline-none text-sm">
+        <!-- Auth Section: Hidden when logged in -->
+        <div id="auth-section" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+            <input type="email" id="email-field" placeholder="Student Email" class="p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
+            <input type="password" id="pass-field" placeholder="Secure Password" class="p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
             <div class="flex gap-2">
-                <button id="login-btn" class="flex-1 bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700 text-sm">Login</button>
-                <button id="reg-btn" class="flex-1 bg-white text-indigo-600 border border-indigo-600 font-bold py-2 rounded-lg hover:bg-indigo-50 text-sm">Register</button>
+                <button id="login-btn" class="flex-1 bg-indigo-600 text-white font-black py-3 rounded-xl hover:bg-indigo-700 text-xs uppercase tracking-widest transition-all">Login</button>
+                <button id="reg-btn" class="flex-1 bg-white text-indigo-600 border-2 border-indigo-600 font-black py-3 rounded-xl hover:bg-indigo-50 text-xs uppercase tracking-widest transition-all">Join</button>
             </div>
         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-gray-200">
+        <!-- Timetable -->
+        <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
             <table class="w-full text-left table-auto border-collapse">
-                <thead class="bg-gray-50 text-gray-600 border-b">
+                <thead class="bg-slate-50 text-slate-500 border-b">
                     <tr>
-                        <th class="p-4 font-bold uppercase text-xs tracking-wider">Day</th>
-                        <th class="p-4 font-bold uppercase text-xs tracking-wider">Time Slot</th>
-                        <th class="p-4 font-bold uppercase text-xs tracking-wider">Subject</th>
-                        <th class="p-4 font-bold uppercase text-xs tracking-wider">Target Topic</th>
+                        <th class="p-4 text-[10px] font-black uppercase tracking-widest">Day</th>
+                        <th class="p-4 text-[10px] font-black uppercase tracking-widest">Schedule Slot</th>
+                        <th class="p-4 text-[10px] font-black uppercase tracking-widest">Core Subject</th>
+                        <th class="p-4 text-[10px] font-black uppercase tracking-widest">Target Topic</th>
                     </tr>
                 </thead>
-                <tbody id="table-body" class="divide-y divide-gray-100">
-                    <!-- Loaded via JS -->
+                <tbody id="table-body" class="divide-y divide-slate-100 font-medium text-slate-700">
+                    <!-- Dynamic Rows -->
                 </tbody>
             </table>
         </div>
 
         <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <button id="logout-btn" class="text-red-500 text-xs font-bold hover:underline">Sign Out of Session</button>
-            <button id="save-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-10 rounded-xl shadow-lg transition-all active:scale-95">
-                Sync Progress to Cloud
+            <div class="flex gap-4 items-center">
+                <button id="logout-btn" class="hidden text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-red-500 transition-colors">Terminate Session</button>
+            </div>
+            <button id="save-btn" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-12 rounded-2xl shadow-xl shadow-indigo-100 transition-all active:scale-95 text-xs uppercase tracking-widest">
+                Push to Cloud
             </button>
         </div>
 
-        <div id="toast" class="fixed bottom-4 right-4 transform translate-y-20 transition-transform duration-300 bg-gray-800 text-white px-6 py-3 rounded-xl shadow-2xl text-sm font-medium z-[100]"></div>
+        <div id="toast" class="fixed bottom-6 right-6 transform translate-y-32 transition-transform duration-300 bg-slate-900 text-white px-6 py-3 rounded-2xl shadow-2xl text-xs font-black uppercase tracking-widest z-[1100]"></div>
     </div>
 
     <script type="module">
@@ -82,147 +84,154 @@
             projectId: "jee-timetable",
             storageBucket: "jee-timetable.firebasestorage.app",
             messagingSenderId: "698764346076",
-            appId: "1:698764346076:web:c1cc2b80aeb2fafd886a19",
-            measurementId: "G-6EKJ4FJBEX"
+            appId: "1:698764346076:web:c1cc2b80aeb2fafd886a19"
         };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const appId = 'jee-prep-master';
+        const appId = 'jee-prep-v2';
 
         const tableBody = document.getElementById('table-body');
-        const authStatus = document.getElementById('auth-status');
         const overlay = document.getElementById('loading-overlay');
-        const syncIndicator = document.getElementById('sync-indicator');
+        const authSection = document.getElementById('auth-section');
+        const logoutBtn = document.getElementById('logout-btn');
+        const syncInd = document.getElementById('sync-indicator');
 
         const defaultData = [
-            { day: 'Monday', time: '17:15 - 21:30', subject: 'Physics', topic: 'Modern Physics' },
-            { day: 'Tuesday', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'Organic Mechanisms' },
-            { day: 'Wednesday', time: '17:15 - 21:30', subject: 'Math', topic: 'Calculus' },
-            { day: 'Thursday', time: '17:15 - 21:30', subject: 'Physics', topic: 'Electrostatics' },
-            { day: 'Friday', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'Inorganic' },
-            { day: 'Saturday', time: '09:00 - 18:30', subject: 'Full Test', topic: 'Mock Exam' },
-            { day: 'Sunday', time: '09:00 - 12:00', subject: 'Analysis', topic: 'Error Log Review' }
+            { day: 'Mon', time: '17:15 - 21:30', subject: 'Physics', topic: 'Rotational Motion' },
+            { day: 'Tue', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'Thermodynamics' },
+            { day: 'Wed', time: '17:15 - 21:30', subject: 'Math', topic: 'Complex Numbers' },
+            { day: 'Thu', time: '17:15 - 21:30', subject: 'Physics', topic: 'Electromagnetism' },
+            { day: 'Fri', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'P-Block Elements' },
+            { day: 'Sat', time: '09:00 - 18:00', subject: 'Full Test', topic: 'Paper 1 & 2 Analysis' },
+            { day: 'Sun', time: '08:00 - 12:00', subject: 'Revision', topic: 'Backlog Clearing' }
         ];
 
         function showToast(msg, isError = false) {
             const t = document.getElementById('toast');
             t.textContent = msg;
-            t.classList.remove('translate-y-20', 'bg-red-600', 'bg-gray-800');
-            t.classList.add(isError ? 'bg-red-600' : 'bg-gray-800');
-            setTimeout(() => t.classList.add('translate-y-20'), 3000);
-        }
-
-        function updateSyncUI(synced) {
-            syncIndicator.innerHTML = synced 
-                ? '<span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> CLOUD SYNCED'
-                : '<span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> LOCAL EDITS';
-            syncIndicator.className = `flex items-center px-3 py-1 rounded-full text-xs font-bold ${synced ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`;
+            t.classList.remove('translate-y-32', 'bg-red-600', 'bg-slate-900');
+            t.classList.add(isError ? 'bg-red-600' : 'bg-slate-900');
+            t.classList.remove('translate-y-32');
+            setTimeout(() => t.classList.add('translate-y-32'), 3000);
         }
 
         function renderTable(data) {
             tableBody.innerHTML = data.map(item => `
-                <tr class="hover:bg-gray-50">
-                    <td class="p-4 font-bold text-indigo-700 text-sm">${item.day}</td>
-                    <td class="p-4 text-sm outline-none" contenteditable="true" data-key="time">${item.time}</td>
-                    <td class="p-4 text-sm outline-none" contenteditable="true" data-key="subject">${item.subject}</td>
-                    <td class="p-4 text-sm outline-none" contenteditable="true" data-key="topic">${item.topic}</td>
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-4 font-black text-indigo-600 text-xs uppercase">${item.day}</td>
+                    <td class="p-4 text-sm outline-none" contenteditable="true">${item.time}</td>
+                    <td class="p-4 text-sm outline-none font-bold" contenteditable="true">${item.subject}</td>
+                    <td class="p-4 text-sm outline-none italic text-slate-500" contenteditable="true">${item.topic}</td>
                 </tr>
             `).join('');
-            
             tableBody.querySelectorAll('[contenteditable]').forEach(el => {
-                el.addEventListener('input', () => updateSyncUI(false));
+                el.addEventListener('input', () => {
+                    syncInd.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 mr-2"></span> UNSAVED CHANGES';
+                    syncInd.className = "flex items-center px-4 py-2 bg-amber-50 rounded-full text-[10px] font-black text-amber-700 uppercase tracking-widest";
+                });
             });
         }
 
-        onAuthStateChanged(auth, async (user) => {
-            if (!user) {
-                authStatus.textContent = "Connecting...";
-                await signInAnonymously(auth).catch(e => {
-                    showToast("Auth failed: " + e.message, true);
-                    overlay.classList.add('hidden');
-                });
-                return;
-            }
-
-            authStatus.textContent = user.isAnonymous ? "Guest Mode" : `Logged in: ${user.email}`;
-            overlay.classList.remove('hidden');
-
+        async function fetchCloudData(user) {
             try {
-                // FIXED PATH: Ensure collection path matches standard document structures
                 const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
                 const snap = await getDoc(docRef);
                 if (snap.exists()) {
                     renderTable(JSON.parse(snap.data().content));
-                    updateSyncUI(true);
+                    syncInd.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> CLOUD SYNCED';
+                    syncInd.className = "flex items-center px-4 py-2 bg-emerald-50 rounded-full text-[10px] font-black text-emerald-700 uppercase tracking-widest";
                 } else {
                     renderTable(defaultData);
                 }
-            } catch (err) {
-                console.error("Firestore Error:", err);
+            } catch (e) {
+                console.error(e);
                 renderTable(defaultData);
-                showToast("Offline Mode: Check Firestore Rules.", true);
+                showToast("Read Error: Working Offline", true);
             } finally {
-                // FORCE HIDE loading screen even if Firestore fails
                 overlay.classList.add('hidden');
             }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                authSection.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                signInAnonymously(auth); 
+                return;
+            }
+
+            // UI Adjustments
+            if (!user.isAnonymous) {
+                authSection.classList.add('hidden');
+                logoutBtn.classList.remove('hidden');
+                document.getElementById('auth-status').textContent = `Authorized: ${user.email}`;
+            } else {
+                authSection.classList.remove('hidden');
+                logoutBtn.classList.add('hidden');
+                document.getElementById('auth-status').textContent = "Guest Session";
+            }
+            
+            fetchCloudData(user);
         });
 
-        document.getElementById('save-btn').onclick = async () => {
-            const user = auth.currentUser;
-            if (!user) return showToast("Log in to save!", true);
-
-            overlay.classList.remove('hidden');
-            try {
-                const rows = Array.from(tableBody.querySelectorAll('tr')).map(tr => {
-                    const cells = tr.querySelectorAll('td');
-                    return { 
-                        day: cells[0].innerText, 
-                        time: cells[1].innerText, 
-                        subject: cells[2].innerText, 
-                        topic: cells[3].innerText 
-                    };
-                });
-
-                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
-                await setDoc(docRef, {
-                    content: JSON.stringify(rows),
-                    updatedAt: new Date().toISOString()
-                });
-                
-                showToast("Successfully synced!");
-                updateSyncUI(true);
-            } catch (err) {
-                showToast("Cloud sync failed. Are Rules set to Test Mode?", true);
-            } finally {
-                overlay.classList.add('hidden');
-            }
-        };
-
         document.getElementById('login-btn').onclick = async () => {
+            if (auth.currentUser && !auth.currentUser.isAnonymous) {
+                return showToast("Already logged in!");
+            }
+
             const e = document.getElementById('email-field').value;
             const p = document.getElementById('pass-field').value;
-            if(!e || !p) return showToast("Enter email and password", true);
+            if(!e || !p) return showToast("Credentials required", true);
+            
             overlay.classList.remove('hidden');
-            await signInWithEmailAndPassword(auth, e, p).catch(err => {
+            try {
+                await signInWithEmailAndPassword(auth, e, p);
+            } catch (err) {
                 showToast(err.message, true);
                 overlay.classList.add('hidden');
-            });
+            }
         };
 
         document.getElementById('reg-btn').onclick = async () => {
             const e = document.getElementById('email-field').value;
             const p = document.getElementById('pass-field').value;
-            if(!e || !p) return showToast("Enter email and password", true);
+            if(!e || !p) return showToast("Email/Pass required", true);
+            
             overlay.classList.remove('hidden');
-            await createUserWithEmailAndPassword(auth, e, p).catch(err => {
+            try {
+                await createUserWithEmailAndPassword(auth, e, p);
+            } catch (err) {
                 showToast(err.message, true);
                 overlay.classList.add('hidden');
-            });
+            }
         };
 
-        document.getElementById('logout-btn').onclick = () => signOut(auth).then(() => location.reload());
+        document.getElementById('save-btn').onclick = async () => {
+            if (!auth.currentUser) return showToast("Auth required", true);
+            
+            overlay.classList.remove('hidden');
+            try {
+                const rows = Array.from(tableBody.querySelectorAll('tr')).map(tr => {
+                    const cells = tr.querySelectorAll('td');
+                    return { day: cells[0].innerText, time: cells[1].innerText, subject: cells[2].innerText, topic: cells[3].innerText };
+                });
+
+                const docRef = doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, 'data', 'timetable');
+                await setDoc(docRef, { content: JSON.stringify(rows), ts: Date.now() });
+                
+                showToast("Cloud updated successfully");
+                syncInd.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> CLOUD SYNCED';
+                syncInd.className = "flex items-center px-4 py-2 bg-emerald-50 rounded-full text-[10px] font-black text-emerald-700 uppercase tracking-widest";
+            } catch (err) {
+                showToast("Write error: " + err.message, true);
+            } finally {
+                overlay.classList.add('hidden');
+            }
+        };
+
+        logoutBtn.onclick = () => signOut(auth).then(() => location.reload());
     </script>
 </body>
 </html>
