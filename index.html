@@ -76,23 +76,20 @@
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- PASTE YOUR FIREBASE CONFIG HERE ---
-        // Replace the code below with the config object you copied from the Firebase Console.
         const firebaseConfig = {
-    apiKey: "AIzaSyCnL4y5BDvlA0N1zfZnuhz97TokrpFI1Og",
-    authDomain: "jee-timetable.firebaseapp.com",
-    projectId: "jee-timetable",
-    storageBucket: "jee-timetable.firebasestorage.app",
-    messagingSenderId: "698764346076",
-    appId: "1:698764346076:web:c1cc2b80aeb2fafd886a19",
-    measurementId: "G-6EKJ4FJBEX"
-  };
-        // ---------------------------------------
+            apiKey: "AIzaSyCnL4y5BDvlA0N1zfZnuhz97TokrpFI1Og",
+            authDomain: "jee-timetable.firebaseapp.com",
+            projectId: "jee-timetable",
+            storageBucket: "jee-timetable.firebasestorage.app",
+            messagingSenderId: "698764346076",
+            appId: "1:698764346076:web:c1cc2b80aeb2fafd886a19",
+            measurementId: "G-6EKJ4FJBEX"
+        };
 
-        const appId = 'jee-prep-master';
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = 'jee-prep-master';
 
         const tableBody = document.getElementById('table-body');
         const authStatus = document.getElementById('auth-status');
@@ -142,7 +139,10 @@
         onAuthStateChanged(auth, async (user) => {
             if (!user) {
                 authStatus.textContent = "Connecting...";
-                await signInAnonymously(auth).catch(e => showToast(e.message, true));
+                await signInAnonymously(auth).catch(e => {
+                    showToast("Auth failed: " + e.message, true);
+                    overlay.classList.add('hidden');
+                });
                 return;
             }
 
@@ -150,7 +150,7 @@
             overlay.classList.remove('hidden');
 
             try {
-                // IMPORTANT: Ensure your Firestore rules allow access to /artifacts/jee-prep-master/users/UID/...
+                // FIXED PATH: Ensure collection path matches standard document structures
                 const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
                 const snap = await getDoc(docRef);
                 if (snap.exists()) {
@@ -160,16 +160,18 @@
                     renderTable(defaultData);
                 }
             } catch (err) {
+                console.error("Firestore Error:", err);
                 renderTable(defaultData);
-                showToast("Loaded default (Offline)", true);
+                showToast("Offline Mode: Check Firestore Rules.", true);
             } finally {
+                // FORCE HIDE loading screen even if Firestore fails
                 overlay.classList.add('hidden');
             }
         });
 
         document.getElementById('save-btn').onclick = async () => {
             const user = auth.currentUser;
-            if (!user) return;
+            if (!user) return showToast("Log in to save!", true);
 
             overlay.classList.remove('hidden');
             try {
@@ -192,7 +194,7 @@
                 showToast("Successfully synced!");
                 updateSyncUI(true);
             } catch (err) {
-                showToast("Permission denied or Network error.", true);
+                showToast("Cloud sync failed. Are Rules set to Test Mode?", true);
             } finally {
                 overlay.classList.add('hidden');
             }
@@ -203,7 +205,10 @@
             const p = document.getElementById('pass-field').value;
             if(!e || !p) return showToast("Enter email and password", true);
             overlay.classList.remove('hidden');
-            await signInWithEmailAndPassword(auth, e, p).catch(err => showToast(err.message, true));
+            await signInWithEmailAndPassword(auth, e, p).catch(err => {
+                showToast(err.message, true);
+                overlay.classList.add('hidden');
+            });
         };
 
         document.getElementById('reg-btn').onclick = async () => {
@@ -211,7 +216,10 @@
             const p = document.getElementById('pass-field').value;
             if(!e || !p) return showToast("Enter email and password", true);
             overlay.classList.remove('hidden');
-            await createUserWithEmailAndPassword(auth, e, p).catch(err => showToast(err.message, true));
+            await createUserWithEmailAndPassword(auth, e, p).catch(err => {
+                showToast(err.message, true);
+                overlay.classList.add('hidden');
+            });
         };
 
         document.getElementById('logout-btn').onclick = () => signOut(auth).then(() => location.reload());
