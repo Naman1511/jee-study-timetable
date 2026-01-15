@@ -34,7 +34,7 @@ A 20-step history buffer allows for immediate recovery from accidental edits, wh
 
 🚀 How to Use
 
-Deployment: Open the index.html. The system will automatically authenticate you via a secure anonymous cloud token.
+Deployment: click on 🔗https://naman1511.github.io/jee-study-timetable/. The system will automatically authenticate you via a secure anonymous cloud token.
 
 Strategy Entry: Click into any cell (Time, Subject, or Topic) to edit your strategy for the week.
 
