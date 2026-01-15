@@ -4,45 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JEE Study Timetable</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
-        }
-        [contenteditable]:focus {
-            outline: 2px solid #6366f1;
-            background-color: #e0e7ff;
-            border-radius: 0.375rem;
-        }
-        table td, table th {
-            border: 1px solid #cbd5e1;
-        }
-        .loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(255, 255, 255, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-            border-radius: 0.75rem;
-        }
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            border-left-color: #6366f1;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; }
+        .loading-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.7); display: flex; justify-content: center; align-items: center; z-index: 10; border-radius: 0.75rem; }
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); border-left-color: #6366f1; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="p-4 sm:p-8 md:p-12 text-gray-800">
@@ -52,47 +19,20 @@
             <div class="spinner"></div>
         </div>
 
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-700 mb-6">Your Weekly JEE Study Timetable</h1>
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-700 mb-6">JEE Study Timetable</h1>
         
         <div id="status-bar" class="text-center mb-4">
             <p id="user-id-display" class="text-sm font-medium text-gray-500">Status: Initializing Auth...</p>
         </div>
 
-        <!-- User Account Section -->
-        <div class="bg-indigo-100 p-4 rounded-lg mb-6 shadow-sm">
-            <h2 class="text-lg font-semibold text-indigo-800 mb-3">User Account</h2>
-            <div class="flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-3 sm:space-y-0">
-                <div class="flex-grow">
-                    <label for="email-input" class="block text-sm font-medium text-gray-700">Email:</label>
-                    <input type="email" id="email-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2" placeholder="your.email@example.com">
-                </div>
-                <div class="flex-grow">
-                    <label for="password-input" class="block text-sm font-medium text-gray-700">Password:</label>
-                    <input type="password" id="password-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2" placeholder="********">
-                </div>
-                <div class="flex space-x-2">
-                    <button id="signup-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 transform hover:scale-105 text-sm">
-                        Sign Up
-                    </button>
-                    <button id="signin-btn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 transform hover:scale-105 text-sm">
-                        Sign In
-                    </button>
-                    <button id="logout-btn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-full shadow transition duration-300 transform hover:scale-105 text-sm">
-                        Log Out
-                    </button>
-                </div>
-            </div>
-            <p id="auth-message-box" class="text-center text-sm mt-3 hidden rounded-md p-2"></p>
-        </div>
-
-        <div class="overflow-x-auto rounded-lg shadow-md">
+        <div class="overflow-x-auto rounded-lg shadow-md mb-6">
             <table class="w-full text-left table-auto border-collapse">
-                <thead class="bg-indigo-600 text-white rounded-t-lg">
+                <thead class="bg-indigo-600 text-white">
                     <tr>
-                        <th class="p-4 rounded-tl-lg">Day</th>
+                        <th class="p-4">Day</th>
                         <th class="p-4">Time Slot</th>
                         <th class="p-4">Subject</th>
-                        <th class="p-4 rounded-tr-lg">Topic & Action</th>
+                        <th class="p-4">Topic & Action</th>
                     </tr>
                 </thead>
                 <tbody id="timetable-body" class="bg-white divide-y divide-gray-200">
@@ -102,8 +42,8 @@
         </div>
 
         <div class="flex justify-center mt-8 space-x-4">
-            <button id="save-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
-                Save Edits
+            <button id="save-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition transform hover:scale-105">
+                Save Changes
             </button>
         </div>
 
@@ -112,184 +52,112 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import {
-            getAuth,
-            signInAnonymously,
-            signInWithCustomToken,
-            createUserWithEmailAndPassword,
-            signInWithEmailAndPassword,
-            signOut,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase configuration from environment
-        let firebaseConfig;
-        try {
-            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        } catch (e) {
-            console.error("Firebase config parsing failed", e);
-            firebaseConfig = {};
-        }
-
+        // Constants and Config
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'jee-study-app';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // UI Selectors
-        const userIdDisplay = document.getElementById('user-id-display');
-        const timetableBody = document.getElementById('timetable-body');
-        const mainMessageBox = document.getElementById('message-box');
-        const loadingOverlay = document.getElementById('loading-overlay');
-
-        let messageTimeout;
-        function showMainMessage(msg, type = 'info') {
-            if (messageTimeout) clearTimeout(messageTimeout);
-            mainMessageBox.textContent = msg;
-            mainMessageBox.className = `text-center text-sm mt-6 p-3 rounded-md font-medium ${
-                type === 'error' ? 'bg-red-100 text-red-700' : 
-                type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-            }`;
-            mainMessageBox.classList.remove('hidden');
-            
-            // Auto-hide after 5 seconds
-            messageTimeout = setTimeout(() => {
-                mainMessageBox.classList.add('hidden');
-            }, 5000);
-        }
-
-        if (!firebaseConfig.apiKey) {
-            userIdDisplay.textContent = "Error: Firebase Config Missing.";
-            userIdDisplay.classList.add('text-red-600');
-        }
-
+        const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let currentUser = null;
+        const timetableBody = document.getElementById('timetable-body');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const messageBox = document.getElementById('message-box');
 
-        const defaultTimetableData = [
+        const defaultData = [
             { day: 'Monday', time: '5:15 PM - 9:30 PM', subject: 'Physics & Math', topic: 'Kinematics & Trigo' },
             { day: 'Tuesday', time: '5:15 PM - 9:30 PM', subject: 'Chemistry', topic: 'Mole Concept' },
             { day: 'Wednesday', time: '5:15 PM - 9:30 PM', subject: 'Math', topic: 'Modulus Equations' },
             { day: 'Thursday', time: '5:15 PM - 9:30 PM', subject: 'Physics', topic: 'Vectors' },
             { day: 'Friday', time: '5:15 PM - 9:30 PM', subject: 'Chemistry', topic: 'Stoichiometry' },
-            { day: 'Saturday', time: '9:00 AM - 6:30 PM', subject: 'Review', topic: 'Problem Solving' },
-            { day: 'Sunday', time: '9:00 AM - 12:00 PM', subject: 'Revision', topic: 'Analysis' }
+            { day: 'Saturday', time: '9:00 AM - 6:30 PM', subject: 'Problem Solving', topic: 'Full Week Review' },
+            { day: 'Sunday', time: '9:00 AM - 12:00 PM', subject: 'Revision', topic: 'Error Analysis' }
         ];
 
-        function renderTimetable(data) {
-            timetableBody.innerHTML = '';
-            data.forEach(item => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50';
-                row.innerHTML = `
-                    <td class="p-4 font-semibold text-indigo-600">${item.day}</td>
+        function showMessage(text, isError = false) {
+            messageBox.textContent = text;
+            messageBox.className = `text-center text-sm mt-6 p-3 rounded-md ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => messageBox.classList.add('hidden'), 5000);
+        }
+
+        function renderTable(data) {
+            timetableBody.innerHTML = data.map(item => `
+                <tr>
+                    <td class="p-4 font-bold text-indigo-700">${item.day}</td>
                     <td class="p-4" contenteditable="true">${item.time}</td>
                     <td class="p-4" contenteditable="true">${item.subject}</td>
-                    <td class="p-4 text-sm" contenteditable="true">${item.topic}</td>
-                `;
-                timetableBody.appendChild(row);
-            });
+                    <td class="p-4" contenteditable="true">${item.topic}</td>
+                </tr>
+            `).join('');
         }
 
-        async function loadTimetable() {
-            if (!currentUser) return;
-            loadingOverlay.classList.remove('hidden');
-            try {
-                // RULE 1: Standardized Firestore Path
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'timetable_data', 'current_week');
-                const snap = await getDoc(docRef);
-                if (snap.exists() && snap.data().data) {
-                    renderTimetable(JSON.parse(snap.data().data));
-                } else {
-                    renderTimetable(defaultTimetableData);
-                }
-            } catch (err) {
-                console.error("Data Load Error:", err);
-                showMainMessage("Failed to load cloud data. Using defaults.", "error");
-                renderTimetable(defaultTimetableData);
-            } finally {
-                loadingOverlay.classList.add('hidden');
-            }
-        }
-
+        // Initialize Auth (Rule 3)
         const initAuth = async () => {
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Auth Error:", err);
-                userIdDisplay.textContent = "Authentication Error";
+                console.error("Auth Failure", err);
+                userIdDisplay.textContent = "Auth Error: " + err.message;
             }
         };
 
-        onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-            if (user) {
-                const label = user.isAnonymous ? "Guest" : user.email;
-                userIdDisplay.textContent = `Active Session: ${label} (${user.uid.substring(0, 8)}...)`;
-                userIdDisplay.classList.remove('text-red-500');
-                loadTimetable();
-            } else {
+        // Data Management
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
                 initAuth();
+                return;
+            }
+
+            userIdDisplay.textContent = `User ID: ${user.uid}`;
+            loadingOverlay.classList.remove('hidden');
+
+            try {
+                // Rule 1: Precise Path Construction
+                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'timetable', 'current');
+                const snap = await getDoc(docRef);
+                
+                if (snap.exists()) {
+                    renderTable(JSON.parse(snap.data().content));
+                } else {
+                    renderTable(defaultData);
+                }
+            } catch (err) {
+                console.error("Fetch Error", err);
+                renderTable(defaultData);
+                showMessage("Using offline defaults. (Permission issue)", true);
+            } finally {
+                loadingOverlay.classList.add('hidden');
             }
         });
 
-        // Sign Up / In / Out Logic
-        document.getElementById('signup-btn').onclick = async () => {
-            const email = document.getElementById('email-input').value;
-            const password = document.getElementById('password-input').value;
-            if (!email || !password) return showMainMessage("Enter email and password", "error");
-            try { 
-                await createUserWithEmailAndPassword(auth, email, password); 
-                showMainMessage("Account created!", "success");
-            } catch(e) { 
-                showMainMessage(e.message, 'error'); 
-            }
-        };
-
-        document.getElementById('signin-btn').onclick = async () => {
-            const email = document.getElementById('email-input').value;
-            const password = document.getElementById('password-input').value;
-            if (!email || !password) return showMainMessage("Enter email and password", "error");
-            try { 
-                await signInWithEmailAndPassword(auth, email, password); 
-                showMainMessage("Welcome back!", "success");
-            } catch(e) { 
-                showMainMessage(e.message, 'error'); 
-            }
-        };
-
-        document.getElementById('logout-btn').onclick = () => signOut(auth);
-
         document.getElementById('save-btn').onclick = async () => {
-            if (!currentUser) return showMainMessage("Sign in required to save!", "error");
+            const user = auth.currentUser;
+            if (!user) return showMessage("Wait for login...", true);
+
             loadingOverlay.classList.remove('hidden');
             try {
-                const rows = Array.from(timetableBody.querySelectorAll('tr'));
-                const data = rows.map(r => {
-                    const c = r.querySelectorAll('td');
-                    return { 
-                        day: c[0].textContent, 
-                        time: c[1].textContent, 
-                        subject: c[2].textContent, 
-                        topic: c[3].textContent 
-                    };
+                const rows = Array.from(timetableBody.querySelectorAll('tr')).map(tr => {
+                    const cells = tr.querySelectorAll('td');
+                    return { day: cells[0].innerText, time: cells[1].innerText, subject: cells[2].innerText, topic: cells[3].innerText };
                 });
-                // RULE 1: Standardized Firestore Path
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'timetable_data', 'current_week');
-                await setDoc(docRef, { 
-                    data: JSON.stringify(data), 
-                    updated: Date.now(),
-                    userId: currentUser.uid 
+
+                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'timetable', 'current');
+                await setDoc(docRef, {
+                    content: JSON.stringify(rows),
+                    lastUpdated: new Date().toISOString()
                 });
-                showMainMessage("Timetable synced to cloud successfully!", "success");
-            } catch (e) {
-                showMainMessage("Sync failed: " + e.message, "error");
+                showMessage("Sync complete! Saved to cloud.");
+            } catch (err) {
+                console.error("Save Error", err);
+                showMessage("Save failed. Check console for details.", true);
             } finally {
                 loadingOverlay.classList.add('hidden');
             }
