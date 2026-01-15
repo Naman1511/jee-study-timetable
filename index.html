@@ -53,12 +53,10 @@
         </div>
 
         <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-indigo-700 mb-6">Your Weekly JEE Study Timetable</h1>
-        <p class="text-center text-gray-600 mb-4">
-            Manage your study schedule efficiently. You can edit any cell directly by clicking on it.
-        </p>
-        <p id="user-id-display" class="text-center text-sm text-gray-500 mb-6">
-            User ID: Loading...
-        </p>
+        
+        <div id="status-bar" class="text-center mb-4">
+            <p id="user-id-display" class="text-sm font-medium text-gray-500">Status: Initializing Auth...</p>
+        </div>
 
         <!-- User Account Section -->
         <div class="bg-indigo-100 p-4 rounded-lg mb-6 shadow-sm">
@@ -87,16 +85,6 @@
             <p id="auth-message-box" class="text-center text-sm mt-3 hidden rounded-md p-2"></p>
         </div>
 
-        <!-- Instructions Section -->
-        <div class="bg-indigo-50 p-4 rounded-lg mb-6 shadow-sm">
-            <h2 class="text-lg font-semibold text-indigo-800 mb-2">How to Use Your Timetable:</h2>
-            <ul class="list-disc list-inside text-gray-700 space-y-1">
-                <li>**Edit Any Cell:** Click directly on the "Time Slot", "Subject", or "Topic & Action" cells to edit their content.</li>
-                <li>**Save Your Changes:** After making edits, click the "<span class="font-bold text-green-700">Save Edits</span>" button.</li>
-                <li>**User ID:** Your unique identifier is displayed above. Your data is private to your account.</li>
-            </ul>
-        </div>
-
         <div class="overflow-x-auto rounded-lg shadow-md">
             <table class="w-full text-left table-auto border-collapse">
                 <thead class="bg-indigo-600 text-white rounded-t-lg">
@@ -108,15 +96,12 @@
                     </tr>
                 </thead>
                 <tbody id="timetable-body" class="bg-white divide-y divide-gray-200">
-                    <!-- Loaded via JS -->
+                    <!-- Data will be rendered here -->
                 </tbody>
             </table>
         </div>
 
         <div class="flex justify-center mt-8 space-x-4">
-            <button id="next-week-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
-                Generate Next Week's Timetable
-            </button>
             <button id="save-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
                 Save Edits
             </button>
@@ -138,31 +123,24 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Environment variables
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // FALLBACK: Attempt to get config from environment or use a placeholder to prevent crashes
+        let firebaseConfig;
+        try {
+            firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        } catch (e) {
+            console.error("Firebase config parsing failed", e);
+            firebaseConfig = {};
+        }
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'jee-study-app';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        let currentUser = null;
-
-        // UI Elements
-        const emailInput = document.getElementById('email-input');
-        const passwordInput = document.getElementById('password-input');
-        const signupBtn = document.getElementById('signup-btn');
-        const signinBtn = document.getElementById('signin-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const authMessageBox = document.getElementById('auth-message-box');
+        // UI Selectors
         const userIdDisplay = document.getElementById('user-id-display');
         const timetableBody = document.getElementById('timetable-body');
         const mainMessageBox = document.getElementById('message-box');
         const loadingOverlay = document.getElementById('loading-overlay');
-
-        function showLoading() { loadingOverlay.classList.remove('hidden'); }
-        function hideLoading() { loadingOverlay.classList.add('hidden'); }
+        const authMessageBox = document.getElementById('auth-message-box');
 
         function showMainMessage(msg, type = 'info') {
             mainMessageBox.textContent = msg;
@@ -171,18 +149,19 @@
                 type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
             }`;
             mainMessageBox.classList.remove('hidden');
-            setTimeout(() => { mainMessageBox.classList.add('hidden'); }, 5000);
         }
 
-        function showAuthMessage(msg, type = 'info') {
-            authMessageBox.textContent = msg;
-            authMessageBox.className = `text-center text-sm mt-3 p-2 rounded-md font-medium ${
-                type === 'error' ? 'bg-red-100 text-red-700' : 
-                type === 'success' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-            }`;
-            authMessageBox.classList.remove('hidden');
-            setTimeout(() => { authMessageBox.classList.add('hidden'); }, 5000);
+        if (!firebaseConfig.apiKey) {
+            userIdDisplay.textContent = "Error: Firebase Config Missing. Check console.";
+            userIdDisplay.classList.add('text-red-600');
+            console.error("Critical: __firebase_config is not defined. Ensure you are running in the correct environment.");
         }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
 
         const defaultTimetableData = [
             { day: 'Monday', time: '5:15 PM - 9:30 PM', subject: 'Physics & Math', topic: 'Kinematics & Trigo' },
@@ -211,10 +190,9 @@
 
         async function loadTimetable() {
             if (!currentUser) return;
-            showLoading();
+            loadingOverlay.classList.remove('hidden');
             try {
-                // Rule 1: Correct Pathing
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'timetables', 'current_week');
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'data', 'current_week');
                 const snap = await getDoc(docRef);
                 if (snap.exists() && snap.data().data) {
                     renderTimetable(JSON.parse(snap.data().data));
@@ -222,55 +200,14 @@
                     renderTimetable(defaultTimetableData);
                 }
             } catch (err) {
-                console.error(err);
+                console.error("Data Load Error:", err);
                 renderTimetable(defaultTimetableData);
             } finally {
-                hideLoading();
+                loadingOverlay.classList.add('hidden');
             }
         }
 
-        async function saveEdits() {
-            if (!currentUser) {
-                showMainMessage("Please sign in to save changes.", "error");
-                return;
-            }
-            showLoading();
-            try {
-                const data = Array.from(timetableBody.querySelectorAll('tr')).map(row => {
-                    const cells = row.querySelectorAll('td');
-                    return {
-                        day: cells[0].textContent,
-                        time: cells[1].textContent,
-                        subject: cells[2].textContent,
-                        topic: cells[3].textContent
-                    };
-                });
-                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'timetables', 'current_week');
-                await setDoc(docRef, { data: JSON.stringify(data), updated: Date.now() });
-                showMainMessage("Changes saved to cloud!", "success");
-            } catch (err) {
-                showMainMessage("Error: " + err.message, "error");
-            } finally {
-                hideLoading();
-            }
-        }
-
-        // Auth listeners
-        signupBtn.onclick = async () => {
-            const e = emailInput.value; const p = passwordInput.value;
-            if(!e || !p) return showAuthMessage("Missing fields", "error");
-            try { await createUserWithEmailAndPassword(auth, e, p); } catch(err) { showAuthMessage(err.message, "error"); }
-        };
-
-        signinBtn.onclick = async () => {
-            const e = emailInput.value; const p = passwordInput.value;
-            if(!e || !p) return showAuthMessage("Missing fields", "error");
-            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { showAuthMessage(err.message, "error"); }
-        };
-
-        logoutBtn.onclick = () => signOut(auth);
-
-        // Initialization Logic
+        // Rule 3: Auth before Queries with Robust Error Handling
         const initAuth = async () => {
             try {
                 if (initialAuthToken) {
@@ -279,23 +216,63 @@
                     await signInAnonymously(auth);
                 }
             } catch (err) {
-                console.error("Critical Auth Error:", err);
-                showMainMessage("Auth failed: " + err.message, "error");
+                console.error("Auth Loop Error:", err);
+                userIdDisplay.textContent = "Auth Error: " + err.message;
+                userIdDisplay.classList.add('text-red-500');
             }
         };
 
         onAuthStateChanged(auth, (user) => {
             currentUser = user;
             if (user) {
-                userIdDisplay.textContent = `User ID: ${user.email || 'Anonymous (' + user.uid.substring(0,8) + '...)'}`;
+                userIdDisplay.textContent = `User: ${user.email || 'Guest (' + user.uid.substring(0,6) + '...)'}`;
+                userIdDisplay.classList.remove('text-red-500');
                 loadTimetable();
             } else {
                 initAuth();
             }
         });
 
-        document.getElementById('save-btn').onclick = saveEdits;
-        document.getElementById('next-week-btn').onclick = () => showMainMessage("Feature coming soon! Ask me to generate content for next week.");
+        // Sign Up / In / Out
+        document.getElementById('signup-btn').onclick = async () => {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            try { await createUserWithEmailAndPassword(auth, email, password); } catch(e) { showMainMessage(e.message, 'error'); }
+        };
+
+        document.getElementById('signin-btn').onclick = async () => {
+            const email = document.getElementById('email-input').value;
+            const password = document.getElementById('password-input').value;
+            try { await signInWithEmailAndPassword(auth, email, password); } catch(e) { showMainMessage(e.message, 'error'); }
+        };
+
+        document.getElementById('logout-btn').onclick = () => signOut(auth);
+
+        document.getElementById('save-btn').onclick = async () => {
+            if (!currentUser) return showMainMessage("Sign in first!", "error");
+            loadingOverlay.classList.remove('hidden');
+            try {
+                const rows = Array.from(timetableBody.querySelectorAll('tr'));
+                const data = rows.map(r => {
+                    const c = r.querySelectorAll('td');
+                    return { day: c[0].textContent, time: c[1].textContent, subject: c[2].textContent, topic: c[3].textContent };
+                });
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'data', 'current_week');
+                await setDoc(docRef, { data: JSON.stringify(data), updated: Date.now() });
+                showMainMessage("Saved successfully!", "success");
+            } catch (e) {
+                showMainMessage("Save failed: " + e.message, "error");
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        };
+
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').catch(err => console.log('SW fail', err));
+            });
+        }
     </script>
 </body>
 </html>
