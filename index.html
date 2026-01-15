@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JEE Study Timetable</title>
-    <!-- Prevent Favicon 404 -->
     <link rel="icon" href="data:,">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -19,16 +18,6 @@
 
     <div id="app-container" class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg p-6 sm:p-8 lg:p-10 mb-8 relative border border-gray-100 min-h-[400px]">
         
-        <!-- INITIALIZATION ERROR OVERLAY -->
-        <div id="config-error" class="loading-overlay hidden text-center p-6">
-            <div class="bg-red-50 text-red-700 p-6 rounded-xl border border-red-200 max-w-md">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                <h2 class="text-xl font-bold mb-2">Environment Error</h2>
-                <p class="text-sm">The <code>__firebase_config</code> variable is missing. This usually happens if the app is running outside the specific sandbox environment.</p>
-                <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold">Retry Connection</button>
-            </div>
-        </div>
-
         <div id="loading-overlay" class="loading-overlay">
             <div class="spinner"></div>
             <p class="mt-4 text-sm font-medium text-gray-500">Connecting to JEE Cloud...</p>
@@ -87,147 +76,145 @@
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- THE FIX: SAFETY CHECK FOR CONFIG ---
-        let firebaseConfig;
-        try {
-            if (typeof __firebase_config === 'undefined') throw new Error("Missing Config");
-            firebaseConfig = JSON.parse(__firebase_config);
-        } catch (e) {
-            console.error("Firebase Config Error:", e);
-            document.getElementById('config-error').classList.remove('hidden');
-            document.getElementById('loading-overlay').classList.add('hidden');
+        // --- PASTE YOUR FIREBASE CONFIG HERE ---
+        // Replace the code below with the config object you copied from the Firebase Console.
+        const firebaseConfig = {
+    apiKey: "AIzaSyCnL4y5BDvlA0N1zfZnuhz97TokrpFI1Og",
+    authDomain: "jee-timetable.firebaseapp.com",
+    projectId: "jee-timetable",
+    storageBucket: "jee-timetable.firebasestorage.app",
+    messagingSenderId: "698764346076",
+    appId: "1:698764346076:web:c1cc2b80aeb2fafd886a19",
+    measurementId: "G-6EKJ4FJBEX"
+  };
+        // ---------------------------------------
+
+        const appId = 'jee-prep-master';
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const tableBody = document.getElementById('table-body');
+        const authStatus = document.getElementById('auth-status');
+        const overlay = document.getElementById('loading-overlay');
+        const syncIndicator = document.getElementById('sync-indicator');
+
+        const defaultData = [
+            { day: 'Monday', time: '17:15 - 21:30', subject: 'Physics', topic: 'Modern Physics' },
+            { day: 'Tuesday', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'Organic Mechanisms' },
+            { day: 'Wednesday', time: '17:15 - 21:30', subject: 'Math', topic: 'Calculus' },
+            { day: 'Thursday', time: '17:15 - 21:30', subject: 'Physics', topic: 'Electrostatics' },
+            { day: 'Friday', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'Inorganic' },
+            { day: 'Saturday', time: '09:00 - 18:30', subject: 'Full Test', topic: 'Mock Exam' },
+            { day: 'Sunday', time: '09:00 - 12:00', subject: 'Analysis', topic: 'Error Log Review' }
+        ];
+
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.remove('translate-y-20', 'bg-red-600', 'bg-gray-800');
+            t.classList.add(isError ? 'bg-red-600' : 'bg-gray-800');
+            setTimeout(() => t.classList.add('translate-y-20'), 3000);
         }
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'jee-prep-master';
-        
-        // Initialize if config exists
-        if (firebaseConfig) {
-            const app = initializeApp(firebaseConfig);
-            const auth = getAuth(app);
-            const db = getFirestore(app);
+        function updateSyncUI(synced) {
+            syncIndicator.innerHTML = synced 
+                ? '<span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> CLOUD SYNCED'
+                : '<span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> LOCAL EDITS';
+            syncIndicator.className = `flex items-center px-3 py-1 rounded-full text-xs font-bold ${synced ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`;
+        }
 
-            const tableBody = document.getElementById('table-body');
-            const authStatus = document.getElementById('auth-status');
-            const overlay = document.getElementById('loading-overlay');
-            const syncIndicator = document.getElementById('sync-indicator');
-
-            const defaultData = [
-                { day: 'Monday', time: '17:15 - 21:30', subject: 'Physics', topic: 'Modern Physics' },
-                { day: 'Tuesday', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'Organic Mechanisms' },
-                { day: 'Wednesday', time: '17:15 - 21:30', subject: 'Math', topic: 'Calculus' },
-                { day: 'Thursday', time: '17:15 - 21:30', subject: 'Physics', topic: 'Electrostatics' },
-                { day: 'Friday', time: '17:15 - 21:30', subject: 'Chemistry', topic: 'Inorganic' },
-                { day: 'Saturday', time: '09:00 - 18:30', subject: 'Full Test', topic: 'Mock Exam' },
-                { day: 'Sunday', time: '09:00 - 12:00', subject: 'Analysis', topic: 'Error Log Review' }
-            ];
-
-            function showToast(msg, isError = false) {
-                const t = document.getElementById('toast');
-                t.textContent = msg;
-                t.classList.remove('translate-y-20', 'bg-red-600', 'bg-gray-800');
-                t.classList.add(isError ? 'bg-red-600' : 'bg-gray-800');
-                setTimeout(() => t.classList.add('translate-y-20'), 3000);
-            }
-
-            function updateSyncUI(synced) {
-                syncIndicator.innerHTML = synced 
-                    ? '<span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> CLOUD SYNCED'
-                    : '<span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> LOCAL EDITS';
-                syncIndicator.className = `flex items-center px-3 py-1 rounded-full text-xs font-bold ${synced ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`;
-            }
-
-            function renderTable(data) {
-                tableBody.innerHTML = data.map(item => `
-                    <tr class="hover:bg-gray-50">
-                        <td class="p-4 font-bold text-indigo-700 text-sm">${item.day}</td>
-                        <td class="p-4 text-sm outline-none" contenteditable="true" data-key="time">${item.time}</td>
-                        <td class="p-4 text-sm outline-none" contenteditable="true" data-key="subject">${item.subject}</td>
-                        <td class="p-4 text-sm outline-none" contenteditable="true" data-key="topic">${item.topic}</td>
-                    </tr>
-                `).join('');
-                
-                // Add listeners to detect edits
-                tableBody.querySelectorAll('[contenteditable]').forEach(el => {
-                    el.addEventListener('input', () => updateSyncUI(false));
-                });
-            }
-
-            onAuthStateChanged(auth, async (user) => {
-                if (!user) {
-                    authStatus.textContent = "Connecting...";
-                    await signInAnonymously(auth).catch(e => showToast(e.message, true));
-                    return;
-                }
-
-                authStatus.textContent = user.isAnonymous ? "Guest Mode" : `Logged in: ${user.email}`;
-                overlay.classList.remove('hidden');
-
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
-                    const snap = await getDoc(docRef);
-                    if (snap.exists()) {
-                        renderTable(JSON.parse(snap.data().content));
-                        updateSyncUI(true);
-                    } else {
-                        renderTable(defaultData);
-                    }
-                } catch (err) {
-                    renderTable(defaultData);
-                    showToast("Loaded default (Offline)", true);
-                } finally {
-                    overlay.classList.add('hidden');
-                }
+        function renderTable(data) {
+            tableBody.innerHTML = data.map(item => `
+                <tr class="hover:bg-gray-50">
+                    <td class="p-4 font-bold text-indigo-700 text-sm">${item.day}</td>
+                    <td class="p-4 text-sm outline-none" contenteditable="true" data-key="time">${item.time}</td>
+                    <td class="p-4 text-sm outline-none" contenteditable="true" data-key="subject">${item.subject}</td>
+                    <td class="p-4 text-sm outline-none" contenteditable="true" data-key="topic">${item.topic}</td>
+                </tr>
+            `).join('');
+            
+            tableBody.querySelectorAll('[contenteditable]').forEach(el => {
+                el.addEventListener('input', () => updateSyncUI(false));
             });
-
-            document.getElementById('save-btn').onclick = async () => {
-                const user = auth.currentUser;
-                if (!user) return;
-
-                overlay.classList.remove('hidden');
-                try {
-                    const rows = Array.from(tableBody.querySelectorAll('tr')).map(tr => {
-                        const cells = tr.querySelectorAll('td');
-                        return { 
-                            day: cells[0].innerText, 
-                            time: cells[1].innerText, 
-                            subject: cells[2].innerText, 
-                            topic: cells[3].innerText 
-                        };
-                    });
-
-                    const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
-                    await setDoc(docRef, {
-                        content: JSON.stringify(rows),
-                        updatedAt: new Date().toISOString()
-                    });
-                    
-                    showToast("Successfully synced!");
-                    updateSyncUI(true);
-                } catch (err) {
-                    showToast("Permission denied or Network error.", true);
-                } finally {
-                    overlay.classList.add('hidden');
-                }
-            };
-
-            document.getElementById('login-btn').onclick = async () => {
-                const e = document.getElementById('email-field').value;
-                const p = document.getElementById('pass-field').value;
-                if(!e || !p) return showToast("Enter email and password", true);
-                overlay.classList.remove('hidden');
-                await signInWithEmailAndPassword(auth, e, p).catch(err => showToast(err.message, true));
-            };
-
-            document.getElementById('reg-btn').onclick = async () => {
-                const e = document.getElementById('email-field').value;
-                const p = document.getElementById('pass-field').value;
-                if(!e || !p) return showToast("Enter email and password", true);
-                overlay.classList.remove('hidden');
-                await createUserWithEmailAndPassword(auth, e, p).catch(err => showToast(err.message, true));
-            };
-
-            document.getElementById('logout-btn').onclick = () => signOut(auth).then(() => location.reload());
         }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                authStatus.textContent = "Connecting...";
+                await signInAnonymously(auth).catch(e => showToast(e.message, true));
+                return;
+            }
+
+            authStatus.textContent = user.isAnonymous ? "Guest Mode" : `Logged in: ${user.email}`;
+            overlay.classList.remove('hidden');
+
+            try {
+                // IMPORTANT: Ensure your Firestore rules allow access to /artifacts/jee-prep-master/users/UID/...
+                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
+                const snap = await getDoc(docRef);
+                if (snap.exists()) {
+                    renderTable(JSON.parse(snap.data().content));
+                    updateSyncUI(true);
+                } else {
+                    renderTable(defaultData);
+                }
+            } catch (err) {
+                renderTable(defaultData);
+                showToast("Loaded default (Offline)", true);
+            } finally {
+                overlay.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('save-btn').onclick = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            overlay.classList.remove('hidden');
+            try {
+                const rows = Array.from(tableBody.querySelectorAll('tr')).map(tr => {
+                    const cells = tr.querySelectorAll('td');
+                    return { 
+                        day: cells[0].innerText, 
+                        time: cells[1].innerText, 
+                        subject: cells[2].innerText, 
+                        topic: cells[3].innerText 
+                    };
+                });
+
+                const docRef = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'timetable');
+                await setDoc(docRef, {
+                    content: JSON.stringify(rows),
+                    updatedAt: new Date().toISOString()
+                });
+                
+                showToast("Successfully synced!");
+                updateSyncUI(true);
+            } catch (err) {
+                showToast("Permission denied or Network error.", true);
+            } finally {
+                overlay.classList.add('hidden');
+            }
+        };
+
+        document.getElementById('login-btn').onclick = async () => {
+            const e = document.getElementById('email-field').value;
+            const p = document.getElementById('pass-field').value;
+            if(!e || !p) return showToast("Enter email and password", true);
+            overlay.classList.remove('hidden');
+            await signInWithEmailAndPassword(auth, e, p).catch(err => showToast(err.message, true));
+        };
+
+        document.getElementById('reg-btn').onclick = async () => {
+            const e = document.getElementById('email-field').value;
+            const p = document.getElementById('pass-field').value;
+            if(!e || !p) return showToast("Enter email and password", true);
+            overlay.classList.remove('hidden');
+            await createUserWithEmailAndPassword(auth, e, p).catch(err => showToast(err.message, true));
+        };
+
+        document.getElementById('logout-btn').onclick = () => signOut(auth).then(() => location.reload());
     </script>
 </body>
 </html>
